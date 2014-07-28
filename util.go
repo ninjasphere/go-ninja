@@ -10,7 +10,14 @@ import (
 	"os/exec"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/bugsnag/bugsnag-go"
 )
+
+func init() {
+	bugsnag.Configure(bugsnag.Configuration{
+		APIKey: "a39d43b795d60d16b1d6099236f5825e",
+	})
+}
 
 func GetSerial() string {
 
@@ -25,6 +32,7 @@ func GetSerial() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatal(err)
 	}
 	return out.String()
@@ -41,6 +49,7 @@ func GetConfig() (*simplejson.Json, error) {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatal(err)
 	}
 	return simplejson.NewJson(out.Bytes())
@@ -76,6 +85,7 @@ func strArrayToJson(in []string) *simplejson.Json {
 
 	out, err := simplejson.NewJson([]byte(str))
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Bad JSON in strArrayToJson %+v: %s", in, err)
 	}
 
@@ -85,10 +95,12 @@ func strArrayToJson(in []string) *simplejson.Json {
 func getDriverInfo(filename string) (res *simplejson.Json) {
 	dat, err := ioutil.ReadFile(filename)
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Unable to get driver info from %s. error: ", filename, err)
 	}
 	js, err := simplejson.NewJson(dat)
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Malformed JSON in driver info: %s, error: %s ", dat, err)
 	}
 

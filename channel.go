@@ -6,6 +6,7 @@ import (
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
+	"github.com/bugsnag/bugsnag-go"
 )
 
 type ChannelBus struct {
@@ -16,6 +17,12 @@ type ChannelBus struct {
 }
 
 type JsonMessageHandler func(string, *simplejson.Json)
+
+func init() {
+	bugsnag.Configure(bugsnag.Configuration{
+		APIKey: "a39d43b795d60d16b1d6099236f5825e",
+	})
+}
 
 // $device/7f0fa623af/channel/d00f681ad1/core.batching/announce
 func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []string, events []string, serviceCallback JsonMessageHandler) (*ChannelBus, error) {
@@ -47,6 +54,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	json, err := js.MarshalJSON()
 
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Couldn't stringify that message %s", err)
 	}
 
@@ -58,6 +66,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	log.Printf("Subscribing to : %s", topicBase)
 	filter, err := MQTT.NewTopicFilter(topicBase, 0)
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("unable to subscribe to %s in announcechannel: %s", topicBase, err)
 	}
 	_, err = d.driver.mqtt.StartSubscription(func(client *MQTT.MqttClient, message MQTT.Message) {
@@ -69,6 +78,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	}, filter)
 
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatal(err)
 	}
 
@@ -107,6 +117,7 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*
   }`))
 
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Bad json: %s", err)
 	}
 
@@ -114,6 +125,7 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*
 	pkginfo := getDriverInfo(driverinfofile)
 	filename, err := pkginfo.Get("main").String()
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Couldn't retrieve main filename: %s", err)
 	}
 
@@ -128,6 +140,7 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*
 	serial := GetSerial()
 	version, err := pkginfo.Get("version").String()
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("No version available for driver %s: %s", id, err)
 	}
 
@@ -164,6 +177,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 }`))
 
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Bad driver announce JSON: %s", js)
 	}
 
@@ -179,6 +193,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 
 	json, err := js.MarshalJSON()
 	if err != nil {
+		bugsnag.Notify(err)
 		log.Fatalf("Couldn't stringify: %s", err)
 	}
 
