@@ -84,9 +84,14 @@ func strArrayToJson(in []string) *simplejson.Json {
 
 func getDriverInfo(filename string) (res *simplejson.Json) {
 	dat, err := ioutil.ReadFile(filename)
-	check(err)
+	if err != nil {
+		log.Fatalf("Unable to get driver info from %s. error: ", filename, err)
+	}
 	js, err := simplejson.NewJson(dat)
-	check(err)
+	if err != nil {
+		log.Fatalf("Malformed JSON in driver info: %s, error: %s ", dat, err)
+	}
+
 	js.Del("scripts")
 	return js
 }

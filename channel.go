@@ -1,9 +1,10 @@
-package main
+package ninja
 
 import (
 	"log"
 	"time"
 
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
 )
 
