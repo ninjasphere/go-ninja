@@ -138,7 +138,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 		id:         id,
 		idType:     idType,
 		name:       name,
-		driver:     &d,
+		driver:     d,
 		devicejson: js.Get("params").GetIndex(0),
 	}
 
