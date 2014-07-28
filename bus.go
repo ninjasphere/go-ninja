@@ -36,39 +36,46 @@ type DeviceBus struct {
 
 func Connect(clientId string) (*NinjaConnection, error) {
 
-	host, port := GetMQTTAddress()
-	mqttServer := fmt.Sprintf("tcp://%s:%d", host, port)
-	conn := NinjaConnection{}
-	opts := MQTT.NewClientOptions().SetBroker(mqttServer).SetClientId(clientId).SetCleanSession(true).SetTraceLevel(MQTT.Off)
-	conn.mqtt = MQTT.NewClient(opts)
-	_, err := conn.mqtt.Start()
+	mqttUrl, err := GetMQTTUrl()
 	if err != nil {
 		bugsnag.Notify(err)
-		log.Fatalf("Failed to connect to mqtt server %s - %s", host, err)
-	} else {
-		log.Printf("Connected to %s\n", host)
+		return nil, err
 	}
+
+	conn := NinjaConnection{}
+	opts := MQTT.NewClientOptions().SetBroker(mqttUrl).SetClientId(clientId).SetCleanSession(true).SetTraceLevel(MQTT.Off)
+	conn.mqtt = MQTT.NewClient(opts)
+
+	if _, err := conn.mqtt.Start(); err != nil {
+		bugsnag.Notify(err)
+		return nil, err
+	}
+
+	log.Printf("Connected to %s\n", mqttUrl)
 	return &conn, nil
 }
 
-func GetMQTTAddress() (host string, port int) {
+func GetMQTTUrl() (url string, err error) {
+
+	var host string
+	var port int
 
 	cfg, err := GetConfig()
 	if err != nil {
 		bugsnag.Notify(err)
-		log.Fatal(err)
+		return
 	}
 
-	mqtt := cfg.Get("mqtt")
-	if host, err = mqtt.Get("host").String(); err != nil {
+	mqttConfig := cfg.Get("mqtt")
+	if host, err = mqttConfig.Get("host").String(); err != nil {
 		bugsnag.Notify(err)
-		log.Fatal(err)
+		return
 	}
-	if port, err = mqtt.Get("port").Int(); err != nil {
+
+	if port, err = mqttConfig.Get("port").Int(); err != nil {
 		bugsnag.Notify(err)
-		log.Fatal(err)
+		return
 	}
-
-	return host, port
-
+	url = fmt.Sprintf("tcp://%s:%d", host, port)
+	return
 }
