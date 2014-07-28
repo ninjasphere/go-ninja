@@ -2,11 +2,11 @@ package ninja
 
 import (
 	"log"
+	"path"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
-	"github.com/bugsnag/bugsnag-go"
 )
 
 type ChannelBus struct {
@@ -103,7 +103,7 @@ func (cb *ChannelBus) SendEvent(event string, payload *simplejson.Json) error {
 	return nil
 }
 
-func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*DriverBus, error) {
+func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath string) (*DriverBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
     "params": [
     {
@@ -121,7 +121,7 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*
 		log.Fatalf("Bad json: %s", err)
 	}
 
-	driverinfofile := path + "package.json"
+	driverinfofile := path.Join(driverPath, "package.json")
 	pkginfo := getDriverInfo(driverinfofile)
 	filename, err := pkginfo.Get("main").String()
 	if err != nil {
@@ -129,7 +129,7 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*
 		log.Fatalf("Couldn't retrieve main filename: %s", err)
 	}
 
-	mainfile := path + filename
+	mainfile := driverPath + filename
 	js.Get("params").GetIndex(0).Set("file", mainfile)
 	js.Get("params").GetIndex(0).Set("name", id)
 	js.Get("params").GetIndex(0).Set("package", pkginfo)
