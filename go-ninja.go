@@ -5,13 +5,14 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/bitly/go-simplejson"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"time"
+
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/bitly/go-simplejson"
 )
 
 func Connect(clientId string) (*NinjaConnection, error) {
@@ -34,7 +35,7 @@ type NinjaConnection struct {
 	mqtt *MQTT.MqttClient
 }
 
-func (n NinjaConnection) AnnounceDriver(id string, name string, path string) (*DriverBus, error) {
+func (n *NinjaConnection) AnnounceDriver(id string, name string, path string) (*DriverBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
 		"params": [
 		{
@@ -92,7 +93,7 @@ type DriverBus struct {
 	mqtt    *MQTT.MqttClient
 }
 
-func (d DriverBus) AnnounceDevice(id string, idType string, name string, sigs *simplejson.Json) (*DeviceBus, error) {
+func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *simplejson.Json) (*DeviceBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
     "params": [
         {
@@ -155,7 +156,7 @@ type DeviceBus struct {
 type JsonMessageHandler func(string, *simplejson.Json)
 
 // $device/7f0fa623af/channel/d00f681ad1/core.batching/announce
-func (d DeviceBus) AnnounceChannel(name string, protocol string, methods []string, events []string, serviceCallback JsonMessageHandler) (*ChannelBus, error) {
+func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []string, events []string, serviceCallback JsonMessageHandler) (*ChannelBus, error) {
 	deviceguid, _ := d.devicejson.Get("guid").String()
 	channelguid := GetGUID(name + protocol)
 	js, _ := simplejson.NewJson([]byte(`{
@@ -212,15 +213,15 @@ func (d DeviceBus) AnnounceChannel(name string, protocol string, methods []strin
 	channelBus := &ChannelBus{
 		name:     name,
 		protocol: protocol,
-		device:   &d,
+		device:   d,
 	}
 
 	return channelBus, nil
 }
 
-func (d DeviceBus) AnnounceBatching() {}
+func (d *DeviceBus) AnnounceBatching() {}
 
-func (cb ChannelBus) SendEvent(event string, payload *simplejson.Json) error {
+func (cb *ChannelBus) SendEvent(event string, payload *simplejson.Json) error {
 	json, err := payload.MarshalJSON()
 	if err != nil {
 		return err
@@ -283,7 +284,13 @@ func strArrayToJson(in []string) *simplejson.Json {
 
 func GetSerial() string {
 
-	cmd := exec.Command("sphere-serial")
+	var cmd *exec.Cmd
+
+	if Exists("/opt/ninjablocks/bin/sphere-serial") {
+		cmd = exec.Command("/opt/ninjablocks/bin/sphere-serial")
+	} else {
+		cmd = exec.Command("./sphere-serial")
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -313,16 +320,19 @@ func GetMQTTAddress() (host string, port int) {
 }
 
 func GetConfig() (*simplejson.Json, error) {
-	cmd := exec.Command("sphere-config")
+	var cmd *exec.Cmd
+	if Exists("/opt/ninjablocks/bin/sphere-config") {
+		cmd = exec.Command("/opt/ninjablocks/bin/sphere-config")
+	} else {
+		cmd = exec.Command("./sphere-config")
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return simplejson.NewJson(out.Bytes())
-
 }
 
 func Exists(name string) bool {
