@@ -1,7 +1,7 @@
 # go-ninja
 ========
 
-A Golang library to interact with the Ninja Sphere used for creating tubular new drivers. 
+A Golang library to interact with the Ninja Sphere-- used for creating tubular new drivers. 
 
 # Usage
 
