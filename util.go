@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"io/ioutil"
-	"log"
+	// "log"
 	"os"
 	"os/exec"
 
@@ -19,7 +19,7 @@ func init() {
 	})
 }
 
-func GetSerial() string {
+func GetSerial() (string, error) {
 
 	var cmd *exec.Cmd
 
@@ -32,10 +32,9 @@ func GetSerial() string {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatal(err)
+		return "", err
 	}
-	return out.String()
+	return out.String(), nil
 }
 
 func GetConfig() (*simplejson.Json, error) {
@@ -49,8 +48,7 @@ func GetConfig() (*simplejson.Json, error) {
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatal(err)
+		return nil, err
 	}
 	return simplejson.NewJson(out.Bytes())
 }
@@ -65,15 +63,13 @@ func Exists(name string) bool {
 }
 
 func GetGUID(in string) string {
-
 	h := md5.New()
 	h.Write([]byte(in))
 	str := hex.EncodeToString(h.Sum(nil))
 	return str[:10]
-
 }
 
-func strArrayToJson(in []string) *simplejson.Json {
+func strArrayToJson(in []string) (*simplejson.Json, error) {
 	str := "[ "
 	for i, item := range in {
 		if i < (len(in) - 1) { //commas between elements except for last item
@@ -85,25 +81,24 @@ func strArrayToJson(in []string) *simplejson.Json {
 
 	out, err := simplejson.NewJson([]byte(str))
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Bad JSON in strArrayToJson %+v: %s", in, err)
+		return nil, err
 	}
 
-	return out
+	return out, nil
 }
 
-func getDriverInfo(filename string) (res *simplejson.Json) {
+func getDriverInfo(filename string) (*simplejson.Json, error) {
+
 	dat, err := ioutil.ReadFile(filename)
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Unable to get driver info from %s. error: ", filename, err)
+		return nil, err
 	}
+
 	js, err := simplejson.NewJson(dat)
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Malformed JSON in driver info: %s, error: %s ", dat, err)
+		return nil, err
 	}
 
 	js.Del("scripts")
-	return js
+	return js, nil
 }

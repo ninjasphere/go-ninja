@@ -7,6 +7,7 @@ import (
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
+	"github.com/bugsnag/bugsnag-go"
 )
 
 type ChannelBus struct {
@@ -44,30 +45,34 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 }`))
 
 	js.Get("params").GetIndex(0).Set("device", d.devicejson)
-	methodsjson := strArrayToJson(methods)
+	methodsjson, err := strArrayToJson(methods)
+	if err != nil {
+		return nil, err
+	}
+
 	js.Get("params").GetIndex(0).Get("supported").Set("methods", methodsjson)
-	eventsjson := strArrayToJson(events)
+
+	eventsjson, err := strArrayToJson(events)
+	if err != nil {
+		return nil, err
+	}
+
 	js.Get("params").GetIndex(0).Get("supported").Set("events", eventsjson)
 	js.Get("params").GetIndex(0).Set("channel", name)
 	js.Set("time", time.Now().Unix())
 
 	json, err := js.MarshalJSON()
-
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Couldn't stringify that message %s", err)
+		return nil, err
 	}
 
 	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
-
 	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
 	<-pubReceipt
-
 	log.Printf("Subscribing to : %s", topicBase)
 	filter, err := MQTT.NewTopicFilter(topicBase, 0)
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("unable to subscribe to %s in announcechannel: %s", topicBase, err)
+		return nil, err
 	}
 	_, err = d.driver.mqtt.StartSubscription(func(client *MQTT.MqttClient, message MQTT.Message) {
 		json, _ := simplejson.NewJson(message.Payload())
@@ -78,8 +83,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	}, filter)
 
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatal(err)
+		return nil, err
 	}
 
 	channelBus := &ChannelBus{
@@ -117,16 +121,17 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
   }`))
 
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Bad json: %s", err)
+		return nil, err
 	}
 
 	driverinfofile := path.Join(driverPath, "package.json")
-	pkginfo := getDriverInfo(driverinfofile)
+	pkginfo, err := getDriverInfo(driverinfofile)
+	if err != nil {
+		return nil, err
+	}
 	filename, err := pkginfo.Get("main").String()
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Couldn't retrieve main filename: %s", err)
+		return nil, err
 	}
 
 	mainfile := driverPath + filename
@@ -137,11 +142,13 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
 	js.Set("time", time.Now().Unix())
 	json, _ := js.MarshalJSON()
 
-	serial := GetSerial()
+	serial, err := GetSerial()
+	if err != nil {
+		return nil, err
+	}
 	version, err := pkginfo.Get("version").String()
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("No version available for driver %s: %s", id, err)
+		return nil, err
 	}
 
 	receipt := n.mqtt.Publish(MQTT.QoS(1), "$node/"+serial+"/app/"+id+"/event/announce", json)
@@ -177,8 +184,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 }`))
 
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Bad driver announce JSON: %s", js)
+		return nil, err
 	}
 
 	guid := GetGUID(d.id + id)
@@ -193,8 +199,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 
 	json, err := js.MarshalJSON()
 	if err != nil {
-		bugsnag.Notify(err)
-		log.Fatalf("Couldn't stringify: %s", err)
+		return nil, err
 	}
 
 	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce/", json)

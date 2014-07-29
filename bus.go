@@ -6,7 +6,6 @@ import (
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
-	bugsnag "github.com/bugsnag/bugsnag-go"
 )
 
 type NinjaConnection struct {
@@ -32,7 +31,6 @@ func Connect(clientId string) (*NinjaConnection, error) {
 
 	mqttUrl, err := GetMQTTUrl()
 	if err != nil {
-		bugsnag.Notify(err)
 		return nil, err
 	}
 
@@ -41,7 +39,6 @@ func Connect(clientId string) (*NinjaConnection, error) {
 	conn.mqtt = MQTT.NewClient(opts)
 
 	if _, err := conn.mqtt.Start(); err != nil {
-		bugsnag.Notify(err)
 		return nil, err
 	}
 
@@ -56,20 +53,17 @@ func GetMQTTUrl() (url string, err error) {
 
 	cfg, err := GetConfig()
 	if err != nil {
-		bugsnag.Notify(err)
-		return
+		return "", err
 	}
 
 	mqttConfig := cfg.Get("mqtt")
 	if host, err = mqttConfig.Get("host").String(); err != nil {
-		bugsnag.Notify(err)
-		return
+		return "", err
 	}
 
 	if port, err = mqttConfig.Get("port").Int(); err != nil {
-		bugsnag.Notify(err)
-		return
+		return "", err
 	}
 	url = fmt.Sprintf("tcp://%s:%d", host, port)
-	return
+	return url, nil
 }
