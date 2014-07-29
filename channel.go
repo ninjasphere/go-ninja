@@ -202,7 +202,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 		return nil, err
 	}
 
-	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce/", json)
+	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce", json)
 	<-receipt
 
 	deviceBus := &DeviceBus{
