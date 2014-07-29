@@ -4,10 +4,9 @@ import (
 	"fmt"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	nlog "github.com/ninjasphere/go-ninja/log"
-
 	"github.com/bitly/go-simplejson"
 	"github.com/bugsnag/bugsnag-go"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
 type JsonMessageHandler func(string, *simplejson.Json)
@@ -18,18 +17,18 @@ type ChannelBus struct {
 	protocol string
 	device   *DeviceBus
 	channel  <-chan MQTT.Receipt
-	log      *nlog.Logger
+	log      *logger.Logger
 }
 
 // NewChannelBus Build a new channel bus for the supplied device
 func NewChannelBus(name string, protocol string, d *DeviceBus) *ChannelBus {
-	logger := nlog.GetLogger(fmt.Sprintf("channel.%s.%s", name, protocol))
-	logger.Infof("Created")
+	log := logger.GetLogger(fmt.Sprintf("channel.%s.%s", name, protocol))
+	log.Infof("Created")
 	return &ChannelBus{
 		name:     name,
 		protocol: protocol,
 		device:   d,
-		log:      logger,
+		log:      log,
 	}
 }
 

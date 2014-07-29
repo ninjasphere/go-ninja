@@ -5,7 +5,7 @@ import (
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	nlog "github.com/ninjasphere/go-ninja/log"
+	"github.com/ninjasphere/go-ninja/logger"
 
 	"github.com/bitly/go-simplejson"
 )
@@ -17,12 +17,12 @@ type DeviceBus struct {
 	name       string
 	driver     *DriverBus
 	devicejson *simplejson.Json
-	log        *nlog.Logger
+	log        *logger.Logger
 }
 
 // NewDeviceBus Create a new device bus.
 func NewDeviceBus(id string, idType string, name string, driver *DriverBus, devicejson *simplejson.Json) *DeviceBus {
-	logger := nlog.GetLogger(fmt.Sprintf("device.%s.%s", id, name))
+	log := logger.GetLogger(fmt.Sprintf("device.%s.%s", id, name))
 
 	return &DeviceBus{
 		id:         id,
@@ -30,7 +30,7 @@ func NewDeviceBus(id string, idType string, name string, driver *DriverBus, devi
 		name:       name,
 		driver:     driver,
 		devicejson: devicejson,
-		log:        logger,
+		log:        log,
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 	"path"
 	"time"
 
-	nlog "github.com/ninjasphere/go-ninja/log"
+	"github.com/ninjasphere/go-ninja/logger"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
@@ -14,15 +14,15 @@ import (
 // NinjaConnection Connects to the local mqtt broker.
 type NinjaConnection struct {
 	mqtt *MQTT.MqttClient
-	log  *nlog.Logger
+	log  *logger.Logger
 }
 
 // Connect Builds a new ninja connection which attaches to the local bus.
 func Connect(clientID string) (*NinjaConnection, error) {
 
-	logger := nlog.GetLogger("connection")
+	log := logger.GetLogger("connection")
 
-	conn := NinjaConnection{log: logger}
+	conn := NinjaConnection{log: log}
 
 	mqttURL, err := getMQTTUrl()
 	if err != nil {
@@ -36,7 +36,7 @@ func Connect(clientID string) (*NinjaConnection, error) {
 		return nil, err
 	}
 
-	logger.Infof("Connected to %s\n", mqttURL)
+	log.Infof("Connected to %s\n", mqttURL)
 	return &conn, nil
 }
 
