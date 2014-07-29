@@ -164,6 +164,17 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
 	return driverBus, nil
 }
 
+// PublishMessage publish an arbitrary message to the ninja bus
+func (n *NinjaConnection) PublishMessage(topic string, jsonmsg *simplejson.Json) error {
+	json, err := jsonmsg.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	receipt := n.mqtt.Publish(MQTT.QoS(1), topic, json)
+	<-receipt
+	return nil
+}
+
 func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *simplejson.Json) (*DeviceBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
     "params": [
