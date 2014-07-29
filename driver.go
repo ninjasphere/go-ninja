@@ -15,6 +15,7 @@ type DriverBus struct {
 	mqtt    *MQTT.MqttClient
 }
 
+// AnnounceDevice Announce a new device has been discovered.
 func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *simplejson.Json) (*DeviceBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
     "params": [
@@ -56,13 +57,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce", json)
 	<-receipt
 
-	deviceBus := &DeviceBus{
-		id:         id,
-		idType:     idType,
-		name:       name,
-		driver:     d,
-		devicejson: js.Get("params").GetIndex(0),
-	}
+	deviceBus := NewDeviceBus(id, idType, name, d, js.Get("params").GetIndex(0))
 
 	return deviceBus, nil
 }

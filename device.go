@@ -1,10 +1,12 @@
 package ninja
 
 import (
-	"log"
+	"fmt"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	nlog "github.com/ninjasphere/go-ninja/log"
+
 	"github.com/bitly/go-simplejson"
 )
 
@@ -15,6 +17,21 @@ type DeviceBus struct {
 	name       string
 	driver     *DriverBus
 	devicejson *simplejson.Json
+	log        *nlog.Logger
+}
+
+// NewDeviceBus Create a new device bus.
+func NewDeviceBus(id string, idType string, name string, driver *DriverBus, devicejson *simplejson.Json) *DeviceBus {
+	logger := nlog.GetLogger(fmt.Sprintf("device.%s.%s", id, name))
+
+	return &DeviceBus{
+		id:         id,
+		idType:     idType,
+		name:       name,
+		driver:     driver,
+		devicejson: devicejson,
+		log:        logger,
+	}
 }
 
 // AnnounceChannel Announce a new channel has been created.
@@ -64,7 +81,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
 	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
 	<-pubReceipt
-	log.Printf("Subscribing to : %s", topicBase)
+	d.log.Infof("Subscribing to : %s", topicBase)
 	filter, err := MQTT.NewTopicFilter(topicBase, 0)
 	if err != nil {
 		return nil, err
@@ -80,12 +97,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	if err != nil {
 		return nil, err
 	}
-
-	channelBus := &ChannelBus{
-		name:     name,
-		protocol: protocol,
-		device:   d,
-	}
+	channelBus := NewChannelBus(name, protocol, d)
 
 	return channelBus, nil
 }
