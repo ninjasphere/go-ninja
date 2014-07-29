@@ -1,6 +1,8 @@
 package ninja
 
 import (
+	"os"
+
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
 )
@@ -21,4 +23,24 @@ func GetLogger(name string) *Logger {
 func (l *Logger) HandleError(err error, msg string) {
 	l.Errorf("%s : %v", msg, err)
 	bugsnag.Notify(err)
+}
+
+// FatalError This notifies bugsnag and logs the error then quits.
+func (l *Logger) FatalError(err error, msg string) {
+	l.Errorf("%s : %v", msg, err)
+	bugsnag.Notify(err)
+	os.Exit(1)
+}
+
+// HandleErrorf This notifies bugsnag and logs the error based on the args.
+func (l *Logger) HandleErrorf(err error, msg string, args ...interface{}) {
+	l.Errorf(msg, args)
+	bugsnag.Notify(err)
+}
+
+// FatalErrorf This notifies bugsnag and logs the error based on the args then quits
+func (l *Logger) FatalErrorf(err error, msg string, args ...interface{}) {
+	l.Errorf(msg, args)
+	bugsnag.Notify(err)
+	os.Exit(1)
 }
