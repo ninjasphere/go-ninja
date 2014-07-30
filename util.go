@@ -26,7 +26,7 @@ func GetSerial() (string, error) {
 	if Exists("/opt/ninjablocks/bin/sphere-serial") {
 		cmd = exec.Command("/opt/ninjablocks/bin/sphere-serial")
 	} else {
-		cmd = exec.Command("./sphere-serial")
+		cmd = exec.Command("sphere-serial")
 	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -42,7 +42,7 @@ func GetConfig() (*simplejson.Json, error) {
 	if Exists("/opt/ninjablocks/bin/sphere-config") {
 		cmd = exec.Command("/opt/ninjablocks/bin/sphere-config")
 	} else {
-		cmd = exec.Command("./sphere-config")
+		cmd = exec.Command("sphere-config")
 	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
