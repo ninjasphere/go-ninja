@@ -5,7 +5,6 @@ import (
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
-	"github.com/bugsnag/bugsnag-go"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -30,13 +29,6 @@ func NewChannelBus(name string, protocol string, d *DeviceBus) *ChannelBus {
 		device:   d,
 		log:      log,
 	}
-}
-
-// TODO move this into the actual drivers as we probably don't want their errors all in the one bucket.
-func init() {
-	bugsnag.Configure(bugsnag.Configuration{
-		APIKey: "a39d43b795d60d16b1d6099236f5825e",
-	})
 }
 
 // SendEvent Publish an event on the channel bus.
