@@ -10,14 +10,7 @@ import (
 	"os/exec"
 
 	"github.com/bitly/go-simplejson"
-	"github.com/bugsnag/bugsnag-go"
 )
-
-func init() {
-	bugsnag.Configure(bugsnag.Configuration{
-		APIKey: "a39d43b795d60d16b1d6099236f5825e",
-	})
-}
 
 func GetSerial() (string, error) {
 
