@@ -81,7 +81,6 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
 	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
 	<-pubReceipt
-	d.log.Infof("Subscribing to : %s", topicBase)
 	filter, err := MQTT.NewTopicFilter(topicBase, 0)
 	if err != nil {
 		return nil, err
