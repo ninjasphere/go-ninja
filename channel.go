@@ -22,7 +22,6 @@ type ChannelBus struct {
 // NewChannelBus Build a new channel bus for the supplied device
 func NewChannelBus(name string, protocol string, d *DeviceBus) *ChannelBus {
 	log := logger.GetLogger(fmt.Sprintf("channel.%s.%s", name, protocol))
-	log.Infof("Created")
 	return &ChannelBus{
 		name:     name,
 		protocol: protocol,
