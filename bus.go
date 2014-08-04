@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/rpc"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
@@ -96,6 +97,17 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
 	}
 
 	return driverBus, nil
+}
+
+// PublishRPCMessage publish an arbitrary message to the ninja bus and deal with the rpc wrapper!
+func (n *NinjaConnection) PublishRPCMessage(topic string, params ...*simplejson.Json) error {
+	json, err := rpc.BuildRPCRequest(params...)
+	if err != nil {
+		return err
+	}
+	receipt := n.mqtt.Publish(MQTT.QoS(1), topic, json)
+	<-receipt
+	return nil
 }
 
 // PublishMessage publish an arbitrary message to the ninja bus
