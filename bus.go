@@ -29,7 +29,7 @@ func Connect(clientID string) (*NinjaConnection, error) {
 		return nil, err
 	}
 
-	opts := MQTT.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true).SetTraceLevel(MQTT.Off)
+	opts := MQTT.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true)
 	conn.mqtt = MQTT.NewClient(opts)
 
 	if _, err := conn.mqtt.Start(); err != nil {
