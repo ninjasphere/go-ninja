@@ -67,9 +67,10 @@ func strArrayToJson(in []string) (*simplejson.Json, error) {
 		if i < (len(in) - 1) { //commas between elements except for last item
 			str += "\"" + item + "\", "
 		} else {
-			str += "\"" + item + "\" ]"
+			str += "\"" + item + "\""
 		}
 	}
+	str += " ]"
 
 	out, err := simplejson.NewJson([]byte(str))
 	if err != nil {
