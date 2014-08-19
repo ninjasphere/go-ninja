@@ -2,6 +2,7 @@ package ninja
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
@@ -57,34 +58,40 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 }`))
 
 	js.Get("params").GetIndex(0).Set("device", d.devicejson)
+
 	methodsjson, err := strArrayToJson(methods)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed converting methods to json: %s", err)
 	}
-
 	js.Get("params").GetIndex(0).Get("supported").Set("methods", methodsjson)
 
 	eventsjson, err := strArrayToJson(events)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed converting events to json: %s", err)
 	}
-
 	js.Get("params").GetIndex(0).Get("supported").Set("events", eventsjson)
+
 	js.Get("params").GetIndex(0).Set("channel", name)
 	js.Set("time", time.Now().Unix())
 
 	json, err := js.MarshalJSON()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed marshalling json: %s", err)
 	}
 
+	log.Printf("Announced channel %s", json)
+
 	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
+
+	log.Printf("Announced channel %s to %s", json, topicBase+"/announce")
+
 	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
 	<-pubReceipt
 	filter, err := MQTT.NewTopicFilter(topicBase, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed creating topic filter: %s", err)
 	}
+
 	_, err = d.driver.mqtt.StartSubscription(func(client *MQTT.MqttClient, message MQTT.Message) {
 		json, _ := simplejson.NewJson(message.Payload())
 		method, _ := json.Get("method").String()
@@ -94,7 +101,7 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 	}, filter)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed starting mqtt subscription: %s", err)
 	}
 	channelBus := NewChannelBus(name, protocol, d)
 

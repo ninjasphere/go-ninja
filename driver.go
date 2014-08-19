@@ -1,6 +1,7 @@
 package ninja
 
 import (
+	"log"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
@@ -53,6 +54,8 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("Outoging announcement : %s", json)
 
 	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce", json)
 	<-receipt

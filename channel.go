@@ -32,11 +32,13 @@ func NewChannelBus(name string, protocol string, d *DeviceBus) *ChannelBus {
 
 // SendEvent Publish an event on the channel bus.
 func (cb *ChannelBus) SendEvent(event string, payload *simplejson.Json) error {
-	cb.log.Debugf("sending event %s", event)
+
 	json, err := payload.MarshalJSON()
 	if err != nil {
 		return err
 	}
+
+	cb.log.Infof("Sending event:%s payload:%s", event, json)
 
 	receipt := cb.device.driver.mqtt.Publish(MQTT.QoS(0), "$driver/"+cb.device.driver.id+"/device/"+cb.device.id+"/channel/"+cb.name+"/"+cb.protocol+"/event/"+event, json)
 	<-receipt
