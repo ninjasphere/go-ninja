@@ -6,19 +6,31 @@ import (
 	"log"
 	"net/rpc"
 	"net/rpc/jsonrpc"
+	"reflect"
 	"unicode"
 	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/juju/loggo"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
 type mqttJsonRpcConnection struct {
-	replyTopic string
-	mqttConn   *mqtt.MqttClient
-	incoming   chan []byte
+	log      *logger.Logger
+	topic    string
+	mqttConn *mqtt.MqttClient
+	incoming chan []byte
 }
 
-func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient) (*rpc.Server, error) {
+type eventingService interface {
+	SetEventHandler(func(event string, payload interface{}) error)
+}
+
+func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient) ([]string, error) {
+
+	log := logger.GetLogger("RPC - " + reflect.TypeOf(service).Name() + " - " + topic)
+
+	log.Infof("Starting RPC service")
 
 	srv := rpc.NewServer()
 	if err := srv.RegisterName("service", service); err != nil {
@@ -26,10 +38,13 @@ func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient)
 	}
 
 	conn := &mqttJsonRpcConnection{
-		mqttConn:   mqttConn,
-		replyTopic: topic + "/reply",
-		incoming:   make(chan []byte),
+		mqttConn: mqttConn,
+		topic:    topic,
+		incoming: make(chan []byte),
+		log:      log,
 	}
+
+	conn.log.SetLogLevel(loggo.TRACE)
 
 	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
@@ -44,7 +59,25 @@ func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient)
 
 	go srv.ServeCodec(jsonrpc.NewServerCodec(conn))
 
-	return srv, nil
+	switch service := service.(type) {
+	case eventingService:
+
+		service.SetEventHandler(func(event string, payload interface{}) error {
+			jsonPayload, err := json.Marshal(payload)
+			if err != nil {
+				return err
+			}
+
+			log.Debugf("Sending event: %s payload: %s", event, jsonPayload)
+
+			pubReceipt := mqttConn.Publish(mqtt.QoS(0), topic+"/event/"+event, jsonPayload)
+			<-pubReceipt
+			return nil
+		})
+
+	}
+
+	return suitableMethods(reflect.TypeOf(service)), nil
 }
 
 type serverRequest struct {
@@ -60,6 +93,14 @@ func upperFirst(s string) string {
 	}
 	r, n := utf8.DecodeRuneInString(s)
 	return string(unicode.ToUpper(r)) + s[n:]
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToLower(r)) + s[n:]
 }
 
 func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
@@ -85,7 +126,7 @@ func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
 }
 
 func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
-	pubReceipt := c.mqttConn.Publish(mqtt.QoS(0), c.replyTopic, p)
+	pubReceipt := c.mqttConn.Publish(mqtt.QoS(0), c.topic+"/reply", p)
 	<-pubReceipt
 	return len(p), nil
 }
@@ -93,4 +134,67 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 func (c *mqttJsonRpcConnection) Close() error {
 	log.Printf("mqttjson: Closing")
 	return nil
+}
+
+var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
+
+// suitableMethods returns suitable Rpc methods of typ, it will report
+// error using log if reportErr is true.
+// Adapted from http://golang.org/src/pkg/net/rpc/server.go
+func suitableMethods(typ reflect.Type) []string {
+	methods := make([]string, 0)
+	for m := 0; m < typ.NumMethod(); m++ {
+		method := typ.Method(m)
+		mtype := method.Type
+		mname := method.Name
+		// Method must be exported.
+		if method.PkgPath != "" {
+			continue
+		}
+		// Method needs three ins: receiver, *args, *reply.
+		if mtype.NumIn() != 3 {
+			continue
+		}
+		// First arg need not be a pointer.
+		argType := mtype.In(1)
+		if !isExportedOrBuiltinType(argType) {
+			continue
+		}
+		// Second arg must be a pointer.
+		replyType := mtype.In(2)
+		if replyType.Kind() != reflect.Ptr {
+			continue
+		}
+		// Reply type must be exported.
+		if !isExportedOrBuiltinType(replyType) {
+			continue
+		}
+		// Method needs one out.
+		if mtype.NumOut() != 1 {
+			continue
+		}
+		// The return type of the method must be error.
+		if returnType := mtype.Out(0); returnType != typeOfError {
+			continue
+		}
+		methods = append(methods, mname)
+
+	}
+	return methods
+}
+
+// Is this an exported - upper case - name?
+func isExported(name string) bool {
+	rune, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(rune)
+}
+
+// Is this type exported or a builtin?
+func isExportedOrBuiltinType(t reflect.Type) bool {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	// PkgPath will be non-empty even for an exported type,
+	// so we need to check the type name as well.
+	return isExported(t.Name()) || t.PkgPath() == ""
 }

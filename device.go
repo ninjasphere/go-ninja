@@ -3,10 +3,12 @@ package ninja
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/rpc2"
 
 	"github.com/bitly/go-simplejson"
 )
@@ -33,6 +35,25 @@ func NewDeviceBus(id string, idType string, name string, driver *DriverBus, devi
 		devicejson: devicejson,
 		log:        log,
 	}
+}
+
+// AddChannel Exports a channel as an RPC service
+func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string) error {
+
+	deviceguid, _ := d.devicejson.Get("guid").String()
+	channelguid := GetGUID(name + protocol)
+
+	topic := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
+
+	methods, err := rpc2.ExportService(channel, topic, d.driver.mqtt)
+
+	if err != nil {
+		return err
+	}
+
+	d.log.Debugf("Added channel: %s (protocol: %s) with methods: %s", name, protocol, strings.Join(methods, ", "))
+
+	return nil
 }
 
 // AnnounceChannel Announce a new channel has been created.
