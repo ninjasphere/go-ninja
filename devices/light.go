@@ -3,8 +3,10 @@ package devices
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sync"
 
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-ninja/logger"
 
@@ -48,10 +50,11 @@ type LightDevice struct {
 	ApplyColor      func(state *channels.ColorState) error
 	ApplyTransition func(state int) error
 
-	bus   *ninja.DeviceBus
-	state *LightDeviceState
-	batch bool
-	log   *logger.Logger
+	bus        *ninja.DeviceBus
+	state      *LightDeviceState
+	batch      bool
+	log        *logger.Logger
+	colorModes []string
 
 	onOff      *channels.OnOffChannel
 	brightness *channels.BrightnessChannel
@@ -172,6 +175,15 @@ func (d *LightDevice) SetBrightness(state float64) error {
 	return err
 }
 
+func containsString(haystack []string, needle string) bool {
+	for _, v := range haystack {
+		if v == needle {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *LightDevice) SetColor(state *channels.ColorState) error {
 	if d.color == nil {
 		return fmt.Errorf("This device does not have a color channel")
@@ -181,15 +193,46 @@ func (d *LightDevice) SetColor(state *channels.ColorState) error {
 
 	var err error
 
-	json, _ := json.Marshal(state)
+	lightState := d.state.Clone()
+	lightState.Color = state
+
+	if !containsString(d.colorModes, state.Mode) {
+		d.log.Debugf("Does not support the color mode: %s, so converting", state.Mode)
+
+		if lightState.Brightness == nil {
+			d.log.Warningf("No brightness value available, but can't convert without it, so defaulting to 1")
+			brightness := float64(1)
+			lightState.Brightness = &brightness
+		}
+
+		var color colorful.Color
+
+		switch lightState.Color.Mode {
+		case "hue":
+			color = colorful.Hsv(*lightState.Color.Hue*float64(360), *lightState.Color.Saturation, *lightState.Brightness)
+		case "temperature":
+			color = temperatureToColor(float64(*lightState.Color.Temperature))
+		case "xy":
+			color = colorful.Xyy(*lightState.Color.X, *lightState.Color.Y, *lightState.Brightness)
+		default:
+			return fmt.Errorf("Unknown color mode: %s", lightState.Color.Mode)
+		}
+
+		h, c, _ := color.Hcl()
+		lightState.Color = &channels.ColorState{
+			Mode:       "hue",
+			Hue:        &h,
+			Saturation: &c,
+		}
+
+	}
+
+	json, _ := json.Marshal(lightState)
 	d.log.Infof("Setting Color to %s", json)
 
 	if d.ApplyColor != nil {
 		err = d.ApplyColor(state)
 	} else {
-		lightState := d.state.Clone()
-		lightState.Color = state
-
 		err = d.ApplyLightState(lightState)
 	}
 
@@ -206,8 +249,15 @@ func (d *LightDevice) SetTransition(state int) error {
 
 	d.state.Transition = &state
 
+	var err error
+
+	if d.ApplyTransition != nil {
+		err = d.ApplyTransition(state)
+	}
+	// I don't think we'd ever want to send a full state to the bulb if we are only updating the transition time
+
 	d.Unlock()
-	return nil
+	return err
 }
 
 func (d *LightDevice) ToggleOnOff() error {
@@ -228,7 +278,14 @@ func (d *LightDevice) EnableBrightnessChannel() error {
 	return d.bus.AddChannel(d.brightness, "brightness", "brightness")
 }
 
-func (d *LightDevice) EnableColorChannel() error {
+func (d *LightDevice) EnableColorChannel(supportedModes ...string) error {
+	if len(supportedModes) == 0 {
+		log.Errorf("You must support at least one color mode")
+	}
+	if !containsString(supportedModes, "hue") {
+		log.Errorf("You must support at least hue color values")
+	}
+	d.colorModes = supportedModes
 	d.color = channels.NewColorChannel(d)
 	return d.bus.AddChannel(d.color, "color", "color")
 }
@@ -250,4 +307,70 @@ func CreateLightDevice(name string, bus *ninja.DeviceBus) (*LightDevice, error) 
 	light.log.Infof("Created")
 
 	return light, nil
+}
+
+// from http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+func temperatureToColor(Temperature float64) colorful.Color {
+
+	Temperature = Temperature / 100
+
+	//Calculate Red:
+	var Red float64
+
+	if Temperature <= 66 {
+		Red = 255
+	} else {
+		Red = Temperature - 60
+		Red = 329.698727446 * math.Pow(Red, -0.1332047592)
+		if Red < 0 {
+			Red = 0
+		}
+		if Red > 255 {
+			Red = 255
+		}
+	}
+
+	//Calculate Green:
+	var Green float64
+
+	if Temperature <= 66 {
+		Green = Temperature
+		Green = 99.4708025861*math.Log(Green) - 161.1195681661
+		if Green < 0 {
+			Green = 0
+		}
+		if Green > 255 {
+			Green = 255
+		}
+	} else {
+		Green = Temperature - 60
+		Green = 288.1221695283 * math.Pow(Green, -0.0755148492)
+		if Green < 0 {
+			Green = 0
+		}
+		if Green > 255 {
+			Green = 255
+		}
+	}
+
+	//Calculate Blue:
+	var Blue float64
+
+	if Temperature >= 66 {
+		Blue = 255
+	} else if Temperature <= 19 {
+
+		Blue = 0
+	} else {
+		Blue = Temperature - 10
+		Blue = 138.5177312231*math.Log(Blue) - 305.0447927307
+		if Blue < 0 {
+			Blue = 0
+		}
+		if Blue > 255 {
+			Blue = 255
+		}
+	}
+
+	return colorful.Color{Red / 255.0, Green / 255.0, Blue / 255.0}
 }
