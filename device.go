@@ -2,12 +2,12 @@ package ninja
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/rpc"
 	"github.com/ninjasphere/go-ninja/rpc2"
 
 	"github.com/bitly/go-simplejson"
@@ -42,14 +42,58 @@ func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string
 
 	deviceguid, _ := d.devicejson.Get("guid").String()
 	channelguid := GetGUID(name + protocol)
+	events := []string{}
 
 	topic := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
 
 	methods, err := rpc2.ExportService(channel, topic, d.driver.mqtt)
 
+	// send out channel announcement
+
+	js, _ := simplejson.NewJson([]byte(`
+		{
+            "channel": "",
+            "supported": {
+                "methods": [],
+                "events": []
+            },
+            "device": {}
+        }
+		`))
+
+	js.Set("device", d.devicejson)
+	js.Set("channel", name)
+
+	methodsjson, err := strArrayToJson(methods)
+
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed converting methods to json: %s", err)
 	}
+
+	js.Get("supported").Set("methods", methodsjson)
+
+	eventsjson, err := strArrayToJson(events)
+
+	if err != nil {
+		return fmt.Errorf("Failed converting events to json: %s", err)
+	}
+
+	js.Get("supported").Set("events", eventsjson)
+
+	json, err := rpc.BuildRPCRequest(js)
+
+	if err != nil {
+		return fmt.Errorf("Failed marshalling json: %s", err)
+	}
+
+	d.log.Debugf("Announced channel %s", json)
+
+	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
+
+	d.log.Debugf("New announce channel %s to %s", json, topicBase+"/announce")
+
+	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
+	<-pubReceipt
 
 	d.log.Debugf("Added channel: %s (protocol: %s) with methods: %s", name, protocol, strings.Join(methods, ", "))
 
@@ -100,11 +144,11 @@ func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []stri
 		return nil, fmt.Errorf("Failed marshalling json: %s", err)
 	}
 
-	log.Printf("Announced channel %s", json)
+	d.log.Debugf("Announced channel %s", json)
 
 	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
 
-	log.Printf("Announced channel %s to %s", json, topicBase+"/announce")
+	d.log.Debugf("Announced channel %s to %s", json, topicBase+"/announce")
 
 	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
 	<-pubReceipt

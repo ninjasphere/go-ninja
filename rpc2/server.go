@@ -3,7 +3,6 @@ package rpc2
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"reflect"
@@ -14,6 +13,8 @@ import (
 	"github.com/juju/loggo"
 	"github.com/ninjasphere/go-ninja/logger"
 )
+
+var log = logger.GetLogger("rpc2")
 
 type mqttJsonRpcConnection struct {
 	log      *logger.Logger
@@ -28,7 +29,7 @@ type eventingService interface {
 
 func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient) ([]string, error) {
 
-	log := logger.GetLogger("RPC - " + reflect.TypeOf(service).Name() + " - " + topic)
+	log := logger.GetLogger(fmt.Sprintf("RPC - %T - %s", service, topic))
 
 	log.Infof("Starting RPC service")
 
@@ -84,7 +85,7 @@ type serverRequest struct {
 	Method string           `json:"method"`
 	Params *json.RawMessage `json:"params"`
 	ID     *json.RawMessage `json:"id"`
-	Time   int              `json:"time"`
+	Time   int64            `json:"time"`
 }
 
 func upperFirst(s string) string {
@@ -107,9 +108,11 @@ func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
 
 	var req = &serverRequest{}
 
-	err = json.Unmarshal(<-c.incoming, req)
+	msg := <-c.incoming
+
+	err = json.Unmarshal(msg, req)
 	if err != nil {
-		log.Printf("Failed to parse incoming json-rpc message %s:", err)
+		log.Errorf("Failed to parse incoming json-rpc message %s : %s", err, msg)
 		return 0, err
 	}
 
@@ -118,7 +121,7 @@ func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
 	data, err := json.Marshal(req)
 
 	if err != nil {
-		log.Printf("Failed to re-marshal incoming json-rpc message %s:", err)
+		log.Errorf("Failed to re-marshal incoming json-rpc message %s:", err)
 		return 0, err
 	}
 
@@ -132,7 +135,7 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 }
 
 func (c *mqttJsonRpcConnection) Close() error {
-	log.Printf("mqttjson: Closing")
+	log.Infof("mqttjson: Closing")
 	return nil
 }
 

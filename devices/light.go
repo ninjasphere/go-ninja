@@ -64,6 +64,7 @@ type LightDevice struct {
 
 func (d *LightDevice) SetLightState(state *LightDeviceState) error {
 	d.Lock()
+	defer d.Unlock()
 
 	var err error
 
@@ -101,7 +102,6 @@ func (d *LightDevice) SetLightState(state *LightDeviceState) error {
 		return fmt.Errorf("Failed emitting transition state: %s", err)
 	}
 
-	d.Unlock()
 	return nil
 }
 
@@ -129,6 +129,7 @@ func (d *LightDevice) SetBatch(state *LightDeviceState) error {
 
 func (d *LightDevice) SetOnOff(state bool) error {
 	d.Lock()
+	defer d.Unlock()
 
 	var err error
 
@@ -147,7 +148,6 @@ func (d *LightDevice) SetOnOff(state bool) error {
 		err = d.ApplyLightState(lightState)
 	}
 
-	d.Unlock()
 	return err
 }
 
@@ -157,6 +157,7 @@ func (d *LightDevice) SetBrightness(state float64) error {
 	}
 
 	d.Lock()
+	defer d.Unlock()
 
 	var err error
 
@@ -171,7 +172,6 @@ func (d *LightDevice) SetBrightness(state float64) error {
 		err = d.ApplyLightState(lightState)
 	}
 
-	d.Unlock()
 	return err
 }
 
@@ -190,6 +190,7 @@ func (d *LightDevice) SetColor(state *channels.ColorState) error {
 	}
 
 	d.Lock()
+	defer d.Unlock()
 
 	var err error
 
@@ -236,7 +237,6 @@ func (d *LightDevice) SetColor(state *channels.ColorState) error {
 		err = d.ApplyLightState(lightState)
 	}
 
-	d.Unlock()
 	return err
 }
 
@@ -246,6 +246,7 @@ func (d *LightDevice) SetTransition(state int) error {
 	}
 
 	d.Lock()
+	defer d.Unlock()
 
 	d.state.Transition = &state
 
@@ -256,7 +257,6 @@ func (d *LightDevice) SetTransition(state int) error {
 	}
 	// I don't think we'd ever want to send a full state to the bulb if we are only updating the transition time
 
-	d.Unlock()
 	return err
 }
 
@@ -302,7 +302,7 @@ func CreateLightDevice(name string, bus *ninja.DeviceBus) (*LightDevice, error) 
 		log: logger.GetLogger("LightDevice - " + name),
 	}
 
-	bus.AddChannel(&LightBatchChannel{light}, "core.batching", "batch")
+	bus.AddChannel(&LightBatchChannel{light}, "core.batching", "core.batching")
 
 	light.log.Infof("Created")
 
