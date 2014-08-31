@@ -1,7 +1,6 @@
 package rpc2
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/rpc"
 	"net/rpc/jsonrpc"
@@ -15,13 +14,6 @@ import (
 )
 
 var log = logger.GetLogger("rpc2")
-
-type mqttJsonRpcConnection struct {
-	log      *logger.Logger
-	topic    string
-	mqttConn *mqtt.MqttClient
-	incoming chan []byte
-}
 
 type eventingService interface {
 	SetEventHandler(func(event string, payload interface{}) error)
@@ -38,25 +30,13 @@ func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient)
 		return nil, fmt.Errorf("Couldn't register: %s", err)
 	}
 
-	conn := &mqttJsonRpcConnection{
-		mqttConn: mqttConn,
-		topic:    topic,
-		incoming: make(chan []byte),
-		log:      log,
-	}
+	conn, err := NewMqttJsonRpcConnection(true, mqttConn, topic, log)
 
-	conn.log.SetLogLevel(loggo.TRACE)
-
-	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	receipt, err := mqttConn.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
-		conn.incoming <- message.Payload()
-	}, filter)
-
-	<-receipt
+	conn.log.SetLogLevel(loggo.TRACE)
 
 	go srv.ServeCodec(jsonrpc.NewServerCodec(conn))
 
@@ -64,79 +44,12 @@ func ExportService(service interface{}, topic string, mqttConn *mqtt.MqttClient)
 	case eventingService:
 
 		service.SetEventHandler(func(event string, payload interface{}) error {
-			jsonPayload, err := json.Marshal(payload)
-			if err != nil {
-				return err
-			}
-
-			log.Debugf("Sending event: %s payload: %s", event, jsonPayload)
-
-			pubReceipt := mqttConn.Publish(mqtt.QoS(0), topic+"/event/"+event, jsonPayload)
-			<-pubReceipt
-			return nil
+			return conn.SendEvent(event, payload)
 		})
 
 	}
 
 	return suitableMethods(reflect.TypeOf(service)), nil
-}
-
-type serverRequest struct {
-	Method string           `json:"method"`
-	Params *json.RawMessage `json:"params"`
-	ID     *json.RawMessage `json:"id"`
-	Time   int64            `json:"time"`
-}
-
-func upperFirst(s string) string {
-	if s == "" {
-		return ""
-	}
-	r, n := utf8.DecodeRuneInString(s)
-	return string(unicode.ToUpper(r)) + s[n:]
-}
-
-func lowerFirst(s string) string {
-	if s == "" {
-		return ""
-	}
-	r, n := utf8.DecodeRuneInString(s)
-	return string(unicode.ToLower(r)) + s[n:]
-}
-
-func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
-
-	var req = &serverRequest{}
-
-	msg := <-c.incoming
-
-	err = json.Unmarshal(msg, req)
-	if err != nil {
-		log.Errorf("Failed to parse incoming json-rpc message %s : %s", err, msg)
-		return 0, err
-	}
-
-	req.Method = "service." + upperFirst(req.Method)
-
-	data, err := json.Marshal(req)
-
-	if err != nil {
-		log.Errorf("Failed to re-marshal incoming json-rpc message %s:", err)
-		return 0, err
-	}
-
-	return copy(p[0:], data), nil
-}
-
-func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
-	pubReceipt := c.mqttConn.Publish(mqtt.QoS(0), c.topic+"/reply", p)
-	<-pubReceipt
-	return len(p), nil
-}
-
-func (c *mqttJsonRpcConnection) Close() error {
-	log.Infof("mqttjson: Closing")
-	return nil
 }
 
 var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
@@ -145,7 +58,8 @@ var typeOfError = reflect.TypeOf((*error)(nil)).Elem()
 // error using log if reportErr is true.
 // Adapted from http://golang.org/src/pkg/net/rpc/server.go
 func suitableMethods(typ reflect.Type) []string {
-	methods := make([]string, 0)
+	var methods []string
+
 	for m := 0; m < typ.NumMethod(); m++ {
 		method := typ.Method(m)
 		mtype := method.Type
