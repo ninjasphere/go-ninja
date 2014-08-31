@@ -41,6 +41,10 @@ func Connect(clientID string) (*NinjaConnection, error) {
 	return &conn, nil
 }
 
+func (n *NinjaConnection) GetMqttClient() *MQTT.MqttClient {
+	return n.mqtt
+}
+
 // AnnounceDriver Anounce a driver has connected to the bus.
 func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath string) (*DriverBus, error) {
 	js, err := simplejson.NewJson([]byte(`{
