@@ -32,25 +32,16 @@ func main() {
 
 	//time.Sleep(time.Second * 3)
 
-	type testEvent struct {
-		Name string `json:"name"`
-		Age  int    `json:"age"`
-	}
+	var things json.RawMessage
 
-	var reply string
-
-	client.Go("IGNOREME", nil, &reply, nil)
-
-	var thing json.RawMessage
-
-	err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
+	err = client.Call("fetchAll", nil, &things)
 
 	if err != nil {
 		log.Fatalf("Failed calling fetch method: %s", err)
 	}
 
 	log.Printf("Done")
-	spew.Dump(thing)
+	spew.Dump(things)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)

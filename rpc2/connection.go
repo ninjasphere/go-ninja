@@ -59,7 +59,7 @@ func NewMqttJsonRpcConnection(serving bool, mqttConn *mqtt.MqttClient, topic str
 		incomingTopic:  topic,
 		outgoingTopic:  topic + "/reply",
 		log:            log,
-		bufferedReader: bufio.NewReader(fake),
+		bufferedReader: bufio.NewReaderSize(fake, 999999999), // TODO: Fix this
 	}
 
 	if !serving {
