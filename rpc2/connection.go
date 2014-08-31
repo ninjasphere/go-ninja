@@ -9,7 +9,6 @@ import (
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -59,7 +58,7 @@ func NewMqttJsonRpcConnection(serving bool, mqttConn *mqtt.MqttClient, topic str
 		incomingTopic:  topic,
 		outgoingTopic:  topic + "/reply",
 		log:            log,
-		bufferedReader: bufio.NewReaderSize(fake, 999999999), // TODO: Fix this
+		bufferedReader: bufio.NewReaderSize(fake, 512*1024), // TODO: Fix this
 	}
 
 	if !serving {
@@ -151,16 +150,14 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	spew.Dump(req)
-
 	if req.Params != nil && string(*req.Params) == "[null]" {
 		blank := json.RawMessage([]byte("[]"))
 		req.Params = &blank
 	}
 
-	spew.Dump(req)
-
 	payload, err := json.Marshal(req)
+
+	log.Infof("Sending %s to %s", payload, c.outgoingTopic)
 
 	pubReceipt := c.mqttConn.Publish(mqtt.QoS(0), c.outgoingTopic, payload)
 	<-pubReceipt
