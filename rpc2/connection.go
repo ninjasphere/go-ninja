@@ -20,7 +20,7 @@ type mqttJsonRpcConnection struct {
 	bufferedReader *bufio.Reader
 }
 
-type serverRequest struct {
+type rpcRequestResponse struct {
 	Params   *json.RawMessage `json:"params,omitEmpty"`
 	Method   *string          `json:"method,omitEmpty"`
 	Time     *int64           `json:"time,omitEmpty"`
@@ -65,6 +65,8 @@ func NewMqttJsonRpcConnection(serving bool, mqttConn *mqtt.MqttClient, topic str
 		c.incomingTopic, c.outgoingTopic = c.outgoingTopic, c.incomingTopic
 	}
 
+	fake.incomingTopic = c.incomingTopic
+
 	filter, err := mqtt.NewTopicFilter(c.incomingTopic, 0)
 	if err != nil {
 		return nil, err
@@ -101,29 +103,43 @@ func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
 }
 
 type fakeReader struct {
-	incomingData chan []byte
+	incomingData  chan []byte
+	incomingTopic string
 }
+
+var result = json.RawMessage([]byte("true"))
 
 func (c *fakeReader) Read(p []byte) (n int, err error) {
 	msg := <-c.incomingData
 
-	log.Infof("Incoming %s", msg)
+	//log.Infof("< Incoming (%s) (unaltered) %s", c.incomingTopic, msg)
 
-	req, err := simplejson.NewJson(msg)
+	r := &rpcRequestResponse{}
+
+	err = json.Unmarshal(msg, r)
 
 	if err != nil {
 		log.Errorf("Failed to parse incoming json-rpc message %s : %s", err, msg)
 		return 0, err
 	}
 
-	method := req.Get("method").MustString()
-	if method != "" {
-		req.Set("method", "service."+upperFirst(method))
+	if r.Method != nil {
+		method := "service." + upperFirst(*r.Method)
+		r.Method = &method
 	}
 
-	req.Set("result", req.Get("response"))
+	r.Result = r.Response
+	r.Response = nil
+	r.Time = nil
+	r.Version = nil
 
-	data, err := req.MarshalJSON()
+	if r.Result == nil && r.Error == nil {
+		r.Result = &result
+	}
+
+	data, err := json.Marshal(r)
+
+	//log.Infof("< Incoming (%s) (altered)   %s", c.incomingTopic, data)
 
 	if err != nil {
 		log.Errorf("Failed to re-marshal incoming json-rpc message %s:", err)
@@ -138,29 +154,38 @@ const version = "2.0"
 
 func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 
+	//log.Infof("< Outgoing (%s) (unaltered) %s", c.outgoingTopic, p)
+
 	var version = "2.0"
 	var now = time.Now().Unix() / 10000
-	var req = &serverRequest{
-		Version: &version,
-		Time:    &now,
-	}
 
-	err = json.Unmarshal(p, req)
+	req, err := simplejson.NewJson(p)
+
 	if err != nil {
 		return 0, err
 	}
 
-	if req.Params != nil && string(*req.Params) == "[null]" {
-		blank := json.RawMessage([]byte("[]"))
-		req.Params = &blank
-	}
+	req.Set("jsonrpc", version)
+	req.Set("time", now)
+	req.Set("response", req.Get("result"))
+	req.Del("result")
+	/*error := req.Get("error").MustString()
+	log.Infof("outgoing error %s", error)
+	if error == "" {
+		req.Del("error")
+	}*/
+	/*
+		if req.Params != nil && string(*req.Params) == "[null]" {
+			blank := json.RawMessage([]byte("[]"))
+			req.Params = &blank
+		}*/
 
-	payload, err := json.Marshal(req)
+	payload, err := req.MarshalJSON()
 
-	log.Infof("Sending %s to %s", payload, c.outgoingTopic)
+	//log.Infof("< Outgoing (%s) (altered)   %s", c.outgoingTopic, payload)
 
-	pubReceipt := c.mqttConn.Publish(mqtt.QoS(0), c.outgoingTopic, payload)
-	<-pubReceipt
+	_ /*pubReceipt :*/ = c.mqttConn.Publish(mqtt.QoS(0), c.outgoingTopic, payload)
+	//<-pubReceipt
 	return len(p), nil
 }
 
