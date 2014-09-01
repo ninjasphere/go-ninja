@@ -197,12 +197,11 @@ func (c *fakeReader) Read(p []byte) (n int, err error) {
 	return copy(p[0:], data), nil
 }
 
-const blank = "[]"
-const version = "2.0"
+var blank = json.RawMessage([]byte("[]"))
 
 func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 
-	log.Infof("> Outgoing (%s) (unaltered) %s", c.outgoingTopic, p)
+	//log.Infof("> Outgoing (%s) (unaltered) %s", c.outgoingTopic, p)
 
 	r := &rpcRequestResponse{}
 
@@ -227,10 +226,18 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 				log.Infof("Failed to unmarshall id: %s", err)
 				return 0, err
 			}
-			log.Infof("Outgoing id : %d", id)
+			log.Debugf("Outgoing id : %d", id)
 			// The id needs to be changed, we need to add our connection id to it
 			stringID := json.RawMessage(fmt.Sprintf(`"%s-%d"`, c.connectionId, id))
 			r.ID = &stringID
+		}
+	}
+
+	if r.Params != nil {
+		//log.Infof("Params % X", *r.Params)
+		if string(*r.Params) == "[null]" {
+			//log.Infof("Its null in an array")
+			r.Params = &blank
 		}
 	}
 
@@ -247,7 +254,7 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 
 	payload, err := json.Marshal(r)
 
-	log.Infof("> Outgoing (%s) (altered)   %s", c.outgoingTopic, payload)
+	//log.Infof("> Outgoing (%s) (altered)   %s", c.outgoingTopic, payload)
 
 	_ /*pubReceipt :*/ = c.mqttConn.Publish(mqtt.QoS(0), c.outgoingTopic, payload)
 	//<-pubReceipt
