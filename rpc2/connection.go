@@ -2,13 +2,19 @@ package rpc2
 
 import (
 	"bufio"
+	"bytes"
+
+	"encoding/binary"
 	"encoding/json"
+	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/bitly/go-simplejson"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -18,6 +24,8 @@ type mqttJsonRpcConnection struct {
 	outgoingTopic  string
 	mqttConn       *mqtt.MqttClient
 	bufferedReader *bufio.Reader
+	connectionId   string
+	server         bool
 }
 
 type rpcRequestResponse struct {
@@ -53,19 +61,23 @@ func NewMqttJsonRpcConnection(serving bool, mqttConn *mqtt.MqttClient, topic str
 		incomingData: make(chan []byte),
 	}
 
+	id := rand.Intn(999999)
+
 	c := &mqttJsonRpcConnection{
 		mqttConn:       mqttConn,
 		incomingTopic:  topic,
 		outgoingTopic:  topic + "/reply",
 		log:            log,
 		bufferedReader: bufio.NewReaderSize(fake, 512*1024), // TODO: Fix this
+		connectionId:   fmt.Sprintf("gorpc%d", id),
+		server:         serving,
 	}
 
 	if !serving {
 		c.incomingTopic, c.outgoingTopic = c.outgoingTopic, c.incomingTopic
 	}
 
-	fake.incomingTopic = c.incomingTopic
+	fake.conn = c
 
 	filter, err := mqtt.NewTopicFilter(c.incomingTopic, 0)
 	if err != nil {
@@ -103,8 +115,8 @@ func (c *mqttJsonRpcConnection) Read(p []byte) (n int, err error) {
 }
 
 type fakeReader struct {
-	incomingData  chan []byte
-	incomingTopic string
+	incomingData chan []byte
+	conn         *mqttJsonRpcConnection
 }
 
 var result = json.RawMessage([]byte("true"))
@@ -121,6 +133,42 @@ func (c *fakeReader) Read(p []byte) (n int, err error) {
 	if err != nil {
 		log.Errorf("Failed to parse incoming json-rpc message %s : %s", err, msg)
 		return 0, err
+	}
+
+	if r.ID != nil {
+		if !c.conn.server {
+			// The id must have out connection Id at the front
+
+			var stringID string
+
+			err := json.Unmarshal(*r.ID, &stringID)
+
+			if err != nil {
+				log.Infof("Failed to unmarshall id: %s", err)
+				return 0, err
+			}
+
+			log.Infof("Incoming ID %s", stringID)
+
+			if !strings.Contains(stringID, c.conn.connectionId) {
+				log.Infof("Not for us!")
+				return 0, nil
+			}
+
+			intID, err := strconv.ParseUint(strings.TrimPrefix(stringID, c.conn.connectionId+"-"), 10, 64)
+
+			log.Infof("Converted ID %d - %s", intID, err)
+
+			buf := new(bytes.Buffer)
+			err = binary.Write(buf, binary.LittleEndian, intID)
+			if err != nil {
+				log.Infof("Failed to write int id: %s", err)
+				return 0, nil
+			}
+
+			fixedID := json.RawMessage(fmt.Sprintf("%d", intID))
+			r.ID = &fixedID
+		}
 	}
 
 	if r.Method != nil {
@@ -154,21 +202,38 @@ const version = "2.0"
 
 func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 
-	//log.Infof("< Outgoing (%s) (unaltered) %s", c.outgoingTopic, p)
+	log.Infof("> Outgoing (%s) (unaltered) %s", c.outgoingTopic, p)
+
+	r := &rpcRequestResponse{}
+
+	err = json.Unmarshal(p, r)
 
 	var version = "2.0"
-	var now = time.Now().Unix() / 10000
+	var now = time.Now().Unix()
 
-	req, err := simplejson.NewJson(p)
+	r.Version = &version
+	r.Time = &now
 
-	if err != nil {
-		return 0, err
+	if r.Result != nil {
+		r.Response = r.Result
 	}
 
-	req.Set("jsonrpc", version)
-	req.Set("time", now)
-	req.Set("response", req.Get("result"))
-	req.Del("result")
+	if r.ID != nil {
+		if !c.server {
+			var id uint64
+			err := json.Unmarshal(*r.ID, &id)
+
+			if err != nil {
+				log.Infof("Failed to unmarshall id: %s", err)
+				return 0, err
+			}
+			log.Infof("Outgoing id : %d", id)
+			// The id needs to be changed, we need to add our connection id to it
+			stringID := json.RawMessage(fmt.Sprintf(`"%s-%d"`, c.connectionId, id))
+			r.ID = &stringID
+		}
+	}
+
 	/*error := req.Get("error").MustString()
 	log.Infof("outgoing error %s", error)
 	if error == "" {
@@ -180,9 +245,9 @@ func (c *mqttJsonRpcConnection) Write(p []byte) (n int, err error) {
 			req.Params = &blank
 		}*/
 
-	payload, err := req.MarshalJSON()
+	payload, err := json.Marshal(r)
 
-	//log.Infof("< Outgoing (%s) (altered)   %s", c.outgoingTopic, payload)
+	log.Infof("> Outgoing (%s) (altered)   %s", c.outgoingTopic, payload)
 
 	_ /*pubReceipt :*/ = c.mqttConn.Publish(mqtt.QoS(0), c.outgoingTopic, payload)
 	//<-pubReceipt
