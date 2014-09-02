@@ -68,7 +68,7 @@ func NewMqttJsonRpcConnection(serving bool, mqttConn *mqtt.MqttClient, topic str
 		incomingTopic:  topic,
 		outgoingTopic:  topic + "/reply",
 		log:            log,
-		bufferedReader: bufio.NewReaderSize(fake, 512*1024), // TODO: Fix this
+		bufferedReader: bufio.NewReaderSize(fake, 128*1024), // TODO: Fix this
 		connectionId:   fmt.Sprintf("gorpc%d", id),
 		server:         serving,
 	}
@@ -192,6 +192,10 @@ func (c *fakeReader) Read(p []byte) (n int, err error) {
 	if err != nil {
 		log.Errorf("Failed to re-marshal incoming json-rpc message %s:", err)
 		return 0, err
+	}
+
+	if len(data) > cap(p) {
+		log.Infof("Json-rpc payload was too big for our buffer. Size:%d Max:%d", len(data), cap(p))
 	}
 
 	return copy(p[0:], data), nil
