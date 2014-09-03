@@ -104,7 +104,7 @@ func (client *Client) handleResponse(message mqtt.Message) {
 
 	client.mutex.Lock()
 	call := client.pending[*id]
-	client.pending[*id] = nil
+	delete(client.pending, *id)
 	client.mutex.Unlock()
 
 	if err != nil {
