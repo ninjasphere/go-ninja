@@ -10,7 +10,6 @@ import (
 	"reflect"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/davecgh/go-spew/spew"
 )
 
 // ----------------------------------------------------------------------------
@@ -80,7 +79,6 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (func(event
 	}
 
 	receipt, err := s.client.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
-		spew.Dump(message)
 		s.serveRequest(topic, message)
 	}, filter)
 

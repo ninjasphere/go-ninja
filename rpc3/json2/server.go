@@ -194,7 +194,7 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 	return c.err
 }
 
-// WriteResponse encodes the response and writes it to the ResponseWriter.
+// WriteResponse encodes the response and writes it to the reply topic
 func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{}) {
 	res := &serverResponse{
 		Version: Version,

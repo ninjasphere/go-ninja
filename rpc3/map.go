@@ -8,7 +8,6 @@ package rpc
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -80,7 +79,6 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 		}
 		// Method needs four ins: receiver, *mqtt.Message, *args, *reply.
 		if mtype.NumIn() != 4 {
-			log.Println("wrong number of ins")
 			continue
 		}
 		// First argument must be a pointer and must be mqtt.Message.

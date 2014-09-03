@@ -35,14 +35,27 @@ func main() {
 	}
 
 	service := &TestService{}
-
 	server := rpc.NewServer(nconn.GetMqttClient(), json2.NewCodec())
-
 	sendEvent, err := server.RegisterService(service, "rpc/test")
 
 	if err != nil {
 		log.Fatalf("Failed to register service: %s", err)
 	}
+
+	client := rpc.NewClient(nconn.GetMqttClient(), json2.NewClientCodec())
+
+	var response string
+	call, err := client.Call("rpc/test", "sayHello", "Erriot", &response)
+	if err != nil {
+		log.Fatalf("Failed to call service: %s", err)
+	}
+
+	<-call.Done
+
+	if call.Error != nil {
+		log.Fatalf("Error received from service, or caused at reply: %s", call.Error)
+	}
+	log.Printf("Response: %s", response)
 
 	time.Sleep(time.Second * 3)
 
