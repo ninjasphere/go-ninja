@@ -52,9 +52,14 @@ func (c *ClientCodec) EncodeClientRequest(call *rpc.Call) ([]byte, error) {
 	req := &clientRequest{
 		Version: "2.0",
 		Method:  call.ServiceMethod,
-		Params:  call.Args,
+		Params:  []interface{}{},
 		Id:      call.Id,
 	}
+
+	if call.Args != nil {
+		req.Params = call.Args
+	}
+
 	return json.Marshal(req)
 }
 
