@@ -58,18 +58,21 @@ func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string
 		return fmt.Errorf("Failed to register channel service on %s : %s", topic, err)
 	}
 
+	events := []string{}
+
 	channelAnnouncement := &model.Channel{
 		ID:       channelguid,
 		Protocol: protocol,
 		Name:     name,
-		Supported: model.ChannelSupported{
-			Methods: exportedService.Methods,
+		Supported: &model.ChannelSupported{
+			Methods: &exportedService.Methods,
+			Events:  &events,
 		},
-		Device: model.Device{},
+		Device: &model.Device{},
 	}
 
 	js, err := d.devicejson.MarshalJSON()
-	json.Unmarshal(js, channelAnnouncement.Device)
+	json.Unmarshal(js, &channelAnnouncement.Device)
 
 	// send out channel announcement
 	err = d.rpcServer.SendNotification(topic+"/announce", channelAnnouncement) // TODO: This should probably be exposed somewhere else
