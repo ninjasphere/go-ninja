@@ -34,7 +34,7 @@ type serverRequest struct {
 	Version string `json:"jsonrpc"`
 
 	// A String containing the name of the method to be invoked.
-	Method string `json:"method"`
+	Method *string `json:"method,omitEmpty"`
 
 	// A Structured value to pass as arguments to the method.
 	Params *json.RawMessage `json:"params"`
@@ -42,7 +42,7 @@ type serverRequest struct {
 	// The request id. MUST be a string, number or null.
 	// Our implementation will not do type checking for id.
 	// It will be copied as it is.
-	Id *json.RawMessage `json:"id"`
+	Id *json.RawMessage `json:"id,omitEmpty"`
 }
 
 // serverResponse represents a JSON-RPC response returned by the server.
@@ -84,15 +84,24 @@ func (c *Codec) NewRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
 
 // SendNotification sends a JSON-RPC notification
 func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload interface{}) error {
-	jsonPayload, err := json.Marshal(payload)
 
+	notification := &serverRequest{
+		Version: Version,
+	}
+
+	jsonPayload, err := json.Marshal([]interface{}{payload})
 	if err != nil {
 		return fmt.Errorf("Failed to marshall rpc notification: %s", err)
 	}
 
-	log.Debugf("< Outgoing to %s : %s", topic, jsonPayload)
+	rawPayload := json.RawMessage(jsonPayload)
 
-	client.Publish(mqtt.QoS(0), topic, jsonPayload)
+	notification.Params = &rawPayload
+	jsonNotification, err := json.Marshal(notification)
+
+	log.Debugf("< Outgoing to %s : %s", topic, jsonNotification)
+
+	client.Publish(mqtt.QoS(0), topic, jsonNotification)
 
 	if err != nil {
 		return fmt.Errorf("Failed to write rpc notification to MQTT: %s", err)
@@ -121,7 +130,9 @@ func newCodecRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
 		}
 	}
 
-	req.Method = upperFirst(req.Method)
+	method := upperFirst(*req.Method)
+
+	req.Method = &method
 
 	if req.Version != Version {
 		err = &Error{
@@ -145,7 +156,7 @@ type CodecRequest struct {
 // The method uses a dotted notation as in "Service.Method".
 func (c *CodecRequest) Method() (string, error) {
 	if c.err == nil {
-		return c.request.Method, nil
+		return *c.request.Method, nil
 	}
 	return "", c.err
 }
@@ -157,7 +168,9 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 
 			// Ninja: If we get an array in, try to pass its contents as one argument
 			paramsString := string(*c.request.Params)
-			if strings.HasPrefix(paramsString, "[") {
+			if paramsString == "[]" {
+				c.request.Params = nil
+			} else if strings.HasPrefix(paramsString, "[") {
 				rawParams := &json.RawMessage{}
 				err := json.Unmarshal([]byte(paramsString[1:len(paramsString)-1]), rawParams)
 
@@ -173,7 +186,7 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 
 			}
 
-			if c.err == nil {
+			if c.err == nil && c.request.Params != nil {
 				// JSON params structured object. Unmarshal to the args object.
 				err := json.Unmarshal(*c.request.Params, args)
 				if err != nil {

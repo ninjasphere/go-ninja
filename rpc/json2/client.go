@@ -8,6 +8,7 @@ package json2
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/ninjasphere/go-ninja/rpc"
 )
@@ -37,7 +38,7 @@ type clientResponse struct {
 	Version string           `json:"jsonrpc"`
 	Result  *json.RawMessage `json:"response"`
 	Error   *json.RawMessage `json:"error"`
-	Id      uint32           `json:"id"`
+	Id      *json.RawMessage `json:"id"`
 }
 
 func NewClientCodec() *ClientCodec {
@@ -70,18 +71,24 @@ func (c *ClientCodec) DecodeIdAndError(msg []byte) (*uint32, error) {
 		return nil, err
 	}
 
+	var id uint32
+	err := json.Unmarshal(*res.Id, &id)
+	if err != nil {
+		return nil, fmt.Errorf("Reply id isn't a uint32. Probably not for us '%s'", *res.Id)
+	}
+
 	if res.Error != nil {
 		jsonErr := &Error{}
 		if err := json.Unmarshal(*res.Error, jsonErr); err != nil {
-			return &res.Id, &Error{
+			return &id, &Error{
 				Code:    E_SERVER,
 				Message: string(*res.Error),
 			}
 		}
-		return &res.Id, jsonErr
+		return &id, jsonErr
 	}
 
-	return &res.Id, nil
+	return &id, nil
 
 }
 
