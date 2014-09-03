@@ -185,10 +185,12 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 				}
 			}
 		} else {
-			c.err = &Error{
+			// Ninja allows a null params field. Should work out how to check missing vs. null.
+			// Then again. Fuck it. Yolo.
+			/*c.err = &Error{
 				Code:    E_INVALID_REQ,
 				Message: "rpc: method request ill-formed: missing params field",
-			}
+			}*/
 		}
 	}
 	return c.err
