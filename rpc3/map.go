@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -52,8 +51,6 @@ type serviceMap struct {
 
 // register adds a new service using reflection to extract its methods.
 func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, err error) {
-
-	log.Infof("ADDING SERVICE '%s'", name)
 
 	// Setup service.
 	s := &service{
@@ -137,7 +134,6 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 func (m *serviceMap) get(topic string, method string) (*service, *serviceMethod, error) {
 	m.mutex.Lock()
 	service := m.services[topic]
-	spew.Dump(m.services)
 	m.mutex.Unlock()
 	if service == nil {
 		err := fmt.Errorf("rpc: can't find service %q", topic)
