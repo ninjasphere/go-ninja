@@ -7,8 +7,8 @@ import (
 
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/rpc3"
-	"github.com/ninjasphere/go-ninja/rpc3/json2"
+	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/go-ninja/rpc/json2"
 
 	"github.com/bitly/go-simplejson"
 )

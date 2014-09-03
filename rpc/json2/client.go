@@ -9,7 +9,7 @@ package json2
 import (
 	"encoding/json"
 
-	"github.com/ninjasphere/go-ninja/rpc3"
+	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 // ----------------------------------------------------------------------------

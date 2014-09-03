@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/rpc3"
-	"github.com/ninjasphere/go-ninja/rpc3/json2"
+	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/go-ninja/rpc/json2"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
