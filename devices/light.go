@@ -6,6 +6,7 @@ import (
 	"math"
 	"sync"
 
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -33,7 +34,7 @@ type LightBatchChannel struct {
 	light *LightDevice
 }
 
-func (c *LightBatchChannel) SetBatch(state *LightDeviceState, reply *interface{}) error {
+func (c *LightBatchChannel) SetBatch(message mqtt.Message, state *LightDeviceState, reply *interface{}) error {
 	return c.light.SetBatch(state)
 }
 
@@ -302,7 +303,10 @@ func CreateLightDevice(name string, bus *ninja.DeviceBus) (*LightDevice, error) 
 		log: logger.GetLogger("LightDevice - " + name),
 	}
 
-	bus.AddChannel(&LightBatchChannel{light}, "core.batching", "core.batching")
+	err := bus.AddChannel(&LightBatchChannel{light}, "core.batching", "core.batching")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create batch channel: %s", err)
+	}
 
 	light.log.Infof("Created")
 

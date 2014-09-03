@@ -1,5 +1,7 @@
 package channels
 
+import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+
 type OnOffDevice interface {
 	ToggleOnOff() error
 	SetOnOff(state bool) error
@@ -15,18 +17,18 @@ func NewOnOffChannel(device OnOffDevice) *OnOffChannel {
 	return &OnOffChannel{baseChannel{}, device}
 }
 
-func (c *OnOffChannel) TurnOn(_, reply *interface{}) error {
-	return c.Set(true, reply)
+func (c *OnOffChannel) TurnOn(message mqtt.Message, _, reply *interface{}) error {
+	return c.Set(message, true, reply)
 }
 
-func (c *OnOffChannel) TurnOff(_, reply *interface{}) error {
-	return c.Set(false, reply)
+func (c *OnOffChannel) TurnOff(message mqtt.Message, _, reply *interface{}) error {
+	return c.Set(message, false, reply)
 }
 
-func (c *OnOffChannel) Toggle(_, reply *interface{}) error {
+func (c *OnOffChannel) Toggle(message mqtt.Message, _, reply *interface{}) error {
 	return c.device.ToggleOnOff()
 }
 
-func (c *OnOffChannel) Set(state bool, reply *interface{}) error {
+func (c *OnOffChannel) Set(message mqtt.Message, state bool, reply *interface{}) error {
 	return c.device.SetOnOff(state)
 }
