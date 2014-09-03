@@ -55,6 +55,16 @@ type Server struct {
 	services *serviceMap
 }
 
+type exportedService struct {
+	Methods []string
+	topic   string
+	server  *Server
+}
+
+func (s *exportedService) SendEvent(event string, payload interface{}) error {
+	return s.server.SendNotification(s.topic+"/event/"+event, payload)
+}
+
 // RegisterService adds a new service to the server.
 //
 // The name parameter is optional: if empty it will be inferred from
@@ -71,7 +81,7 @@ type Server struct {
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (s *Server) RegisterService(receiver interface{}, topic string) (func(event string, payload interface{}) error, error) {
+func (s *Server) RegisterService(receiver interface{}, topic string) (service *exportedService, err error) {
 
 	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
@@ -87,14 +97,20 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (func(event
 	}
 
 	<-receipt
-	return func(event string, payload interface{}) error {
-		return s.codec.SendNotification(s.client, topic+"/event/"+event, payload)
-	}, s.services.register(receiver, topic)
+
+	exportedMethods, err := s.services.register(receiver, topic)
+
+	return &exportedService{Methods: exportedMethods, topic: topic, server: s}, err
+}
+
+// SendNotification sends a one-way notification. Perhaps shouldn't be in Server....
+func (s *Server) SendNotification(topic string, payload interface{}) error {
+	return s.codec.SendNotification(s.client, topic, payload)
 }
 
 // HasMethod returns true if the given method is registered on a topic
 func (s *Server) HasMethod(topic string, method string) bool {
-	if _, _, err := s.services.get(topic + "." + method); err == nil {
+	if _, _, err := s.services.get(topic, method); err == nil {
 		return true
 	}
 	return false
@@ -111,7 +127,10 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		codecReq.WriteError(s.client, errMethod)
 		return
 	}
-	serviceSpec, methodSpec, errGet := s.services.get(topic + "." + method)
+
+	log.Infof("TOPIC '%s' METHOD '%s'", topic, method)
+
+	serviceSpec, methodSpec, errGet := s.services.get(topic, method)
 	if errGet != nil {
 		codecReq.WriteError(s.client, errGet)
 		return

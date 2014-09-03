@@ -9,12 +9,12 @@ package rpc
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/davecgh/go-spew/spew"
 )
 
 var (
@@ -51,7 +51,10 @@ type serviceMap struct {
 }
 
 // register adds a new service using reflection to extract its methods.
-func (m *serviceMap) register(rcvr interface{}, name string) error {
+func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, err error) {
+
+	log.Infof("ADDING SERVICE '%s'", name)
+
 	// Setup service.
 	s := &service{
 		name:     name,
@@ -62,12 +65,11 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 	if name == "" {
 		s.name = reflect.Indirect(s.rcvr).Type().Name()
 		if !isExported(s.name) {
-			return fmt.Errorf("rpc: type %q is not exported", s.name)
+			return nil, fmt.Errorf("rpc: type %q is not exported", s.name)
 		}
 	}
 	if s.name == "" {
-		return fmt.Errorf("rpc: no service name for type %q",
-			s.rcvrType.String())
+		return nil, fmt.Errorf("rpc: no service name for type %q", s.rcvrType.String())
 	}
 	// Setup methods.
 	for i := 0; i < s.rcvrType.NumMethod(); i++ {
@@ -110,8 +112,7 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 		}
 	}
 	if len(s.methods) == 0 {
-		return fmt.Errorf("rpc: %q has no exported methods of suitable type",
-			s.name)
+		return nil, fmt.Errorf("rpc: %q has no exported methods of suitable type", s.name)
 	}
 	// Add to the map.
 	m.mutex.Lock()
@@ -119,29 +120,30 @@ func (m *serviceMap) register(rcvr interface{}, name string) error {
 	if m.services == nil {
 		m.services = make(map[string]*service)
 	} else if _, ok := m.services[s.name]; ok {
-		return fmt.Errorf("rpc: service already defined: %q", s.name)
+		return nil, fmt.Errorf("rpc: service already defined: %q", s.name)
 	}
 	m.services[s.name] = s
-	return nil
+
+	exportedMethods := make([]string, len(s.methods))
+	i := 0
+	for name := range s.methods {
+		exportedMethods[i] = name
+		i++
+	}
+	return exportedMethods, nil
 }
 
 // get returns a registered service given a method name.
-//
-// The method name uses a dotted notation as in "Service.Method".
-func (m *serviceMap) get(method string) (*service, *serviceMethod, error) {
-	parts := strings.Split(method, ".")
-	if len(parts) != 2 {
-		err := fmt.Errorf("rpc: service/method request ill-formed: %q", method)
-		return nil, nil, err
-	}
+func (m *serviceMap) get(topic string, method string) (*service, *serviceMethod, error) {
 	m.mutex.Lock()
-	service := m.services[parts[0]]
+	service := m.services[topic]
+	spew.Dump(m.services)
 	m.mutex.Unlock()
 	if service == nil {
-		err := fmt.Errorf("rpc: can't find service %q", method)
+		err := fmt.Errorf("rpc: can't find service %q", topic)
 		return nil, nil, err
 	}
-	serviceMethod := service.methods[parts[1]]
+	serviceMethod := service.methods[method]
 	if serviceMethod == nil {
 		err := fmt.Errorf("rpc: can't find method %q", method)
 		return nil, nil, err

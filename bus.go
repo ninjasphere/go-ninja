@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/go-ninja/rpc3"
+	"github.com/ninjasphere/go-ninja/rpc3/json2"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
@@ -14,8 +15,9 @@ import (
 
 // NinjaConnection Connects to the local mqtt broker.
 type NinjaConnection struct {
-	mqtt *MQTT.MqttClient
-	log  *logger.Logger
+	mqtt      *MQTT.MqttClient
+	log       *logger.Logger
+	rpcClient *rpc.Client
 }
 
 // Connect Builds a new ninja connection which attaches to the local bus.
@@ -37,12 +39,18 @@ func Connect(clientID string) (*NinjaConnection, error) {
 		return nil, err
 	}
 
+	conn.rpcClient = rpc.NewClient(conn.mqtt, json2.NewClientCodec())
+
 	log.Infof("Connected to %s\n", mqttURL)
 	return &conn, nil
 }
 
 func (n *NinjaConnection) GetMqttClient() *MQTT.MqttClient {
 	return n.mqtt
+}
+
+func (n *NinjaConnection) GetRPCClient() *rpc.Client {
+	return n.rpcClient
 }
 
 // AnnounceDriver Anounce a driver has connected to the bus.
@@ -105,13 +113,31 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
 
 // PublishRPCMessage publish an arbitrary message to the ninja bus and deal with the rpc wrapper!
 func (n *NinjaConnection) PublishRPCMessage(topic string, params ...*simplejson.Json) error {
-	json, err := rpc.BuildRPCRequest(params...)
+	json, err := BuildRPCRequest(params...)
 	if err != nil {
 		return err
 	}
 	receipt := n.mqtt.Publish(MQTT.QoS(1), topic, json)
 	<-receipt
 	return nil
+}
+
+// Alias so we can test this thing
+var unixTimestampFunc = time.Now().Unix
+
+// BuildRPCRequest Using the supplied params assemble a json RPC message and marshal it.
+func BuildRPCRequest(params ...*simplejson.Json) ([]byte, error) {
+
+	jsonmsg, err := simplejson.NewJson([]byte(`{"params": [],"time": "","jsonrpc": "2.0"}`))
+
+	if err != nil {
+		return nil, err
+	}
+
+	jsonmsg.Set("params", params)
+	jsonmsg.Set("time", unixTimestampFunc())
+
+	return jsonmsg.MarshalJSON()
 }
 
 // PublishMessage publish an arbitrary message to the ninja bus
