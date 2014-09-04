@@ -18,17 +18,17 @@ func NewOnOffChannel(device OnOffDevice) *OnOffChannel {
 }
 
 func (c *OnOffChannel) TurnOn(message mqtt.Message, _, reply *interface{}) error {
-	return c.Set(message, true, reply)
+	return c.device.SetOnOff(true)
 }
 
 func (c *OnOffChannel) TurnOff(message mqtt.Message, _, reply *interface{}) error {
-	return c.Set(message, false, reply)
+	return c.device.SetOnOff(false)
 }
 
 func (c *OnOffChannel) Toggle(message mqtt.Message, _, reply *interface{}) error {
 	return c.device.ToggleOnOff()
 }
 
-func (c *OnOffChannel) Set(message mqtt.Message, state bool, reply *interface{}) error {
-	return c.device.SetOnOff(state)
+func (c *OnOffChannel) Set(message mqtt.Message, state *bool, reply *interface{}) error {
+	return c.device.SetOnOff(*state)
 }
