@@ -1,11 +1,11 @@
 package model
 
 type Device struct {
-	ID         string             `json:"id"`
-	IDType     string             `json:"idType"`
-	Guid       string             `json:"guid"`
-	Name       *string            `json:"name,omitEmpty"`
-	Thing      *string            `json:"thing,omitEmpty"`
-	Channels   *[]Channel         `json:"channels,omitEmpty"`
-	Signatures *map[string]string `json:"signatures,omitEmpty"`
+	ID         string             `json:"id" redis:"id"`
+	IDType     string             `json:"idType" redis:"idType"`
+	Guid       string             `json:"guid" redis:"guid"`
+	Name       *string            `json:"name,omitEmpty" redis:"name"`
+	Thing      *string            `json:"thing,omitEmpty" redis:"thing"`
+	Channels   *[]Channel         `json:"channels,omitEmpty" redis:"-"`
+	Signatures *map[string]string `json:"signatures,omitEmpty" redis:"signatures,json"`
 }
