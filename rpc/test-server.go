@@ -9,21 +9,19 @@ import (
 	"os/signal"
 	"time"
 
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja"
-	"github.com/ninjasphere/go-ninja/rpc2"
+	"github.com/ninjasphere/go-ninja/rpc3"
+	"github.com/ninjasphere/go-ninja/rpc3/json2"
 )
 
 type TestService struct {
 	SendEvent func(payload interface{}, event string) error
 }
 
-func (t *TestService) SayHello(name *string, reply *string) error {
+func (t *TestService) SayHello(msg mqtt.Message, name *string, reply *string) error {
 	*reply = fmt.Sprintf("Hey there %s!", *name)
 	return nil
-}
-
-func (t *TestService) SetEventHandler(handler func(payload interface{}, event string) error) {
-	t.SendEvent = handler
 }
 
 // mosquitto_pub -m '{"id":123, "params": ["Elliot"],"jsonrpc": "2.0","method":"sayHello","time":132123123}' -t 'rpc/test'
@@ -37,9 +35,27 @@ func main() {
 	}
 
 	service := &TestService{}
+	server := rpc.NewServer(nconn.GetMqttClient(), json2.NewCodec())
+	sendEvent, err := server.RegisterService(service, "rpc/test")
 
-	// You need to export the mqtt connection here if you want to test it.
-	rpc2.ExportService(service, "rpc/test", nconn.Mqtt)
+	if err != nil {
+		log.Fatalf("Failed to register service: %s", err)
+	}
+
+	client := rpc.NewClient(nconn.GetMqttClient(), json2.NewClientCodec())
+
+	var response string
+	call, err := client.Call("rpc/test", "sayHello", "Erriot", &response)
+	if err != nil {
+		log.Fatalf("Failed to call service: %s", err)
+	}
+
+	<-call.Done
+
+	if call.Error != nil {
+		log.Fatalf("Error received from service, or caused at reply: %s", call.Error)
+	}
+	log.Printf("Response: %s", response)
 
 	time.Sleep(time.Second * 3)
 
@@ -48,10 +64,10 @@ func main() {
 		Age  int    `json:"age"`
 	}
 
-	service.SendEvent(&testEvent{
+	sendEvent("state", &testEvent{
 		Name: "Elliot",
 		Age:  30,
-	}, "state")
+	})
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)

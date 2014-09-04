@@ -1,12 +1,14 @@
 package ninja
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
-	"time"
+	"strings"
 
-	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/go-ninja/rpc/json2"
 
 	"github.com/bitly/go-simplejson"
 )
@@ -19,6 +21,7 @@ type DeviceBus struct {
 	driver     *DriverBus
 	devicejson *simplejson.Json
 	log        *logger.Logger
+	rpcServer  *rpc.Server
 }
 
 // NewDeviceBus Create a new device bus.
@@ -32,78 +35,60 @@ func NewDeviceBus(id string, idType string, name string, driver *DriverBus, devi
 		driver:     driver,
 		devicejson: devicejson,
 		log:        log,
+		rpcServer:  rpc.NewServer(driver.mqtt, json2.NewCodec()),
 	}
 }
 
-// AnnounceChannel Announce a new channel has been created.
-func (d *DeviceBus) AnnounceChannel(name string, protocol string, methods []string, events []string, serviceCallback JsonMessageHandler) (*ChannelBus, error) {
+type eventingService interface {
+	SetEventHandler(func(event string, payload interface{}) error)
+}
 
-	// $device/7f0fa623af/channel/d00f681ad1/core.batching/announce
+// AddChannel Exports a channel as an RPC service, and announces it
+// If the channel implements eventingService, it will be given a function to send events
+func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string) error {
 
 	deviceguid, _ := d.devicejson.Get("guid").String()
 	channelguid := GetGUID(name + protocol)
-	js, _ := simplejson.NewJson([]byte(`{
-    "params": [
-          {
-            "channel": "",
-            "supported": {
-                "methods": [],
-                "events": []
-            },
-            "device": {}
-        }
-    ],
-    "time": "",
-    "jsonrpc": "2.0"
-}`))
 
-	js.Get("params").GetIndex(0).Set("device", d.devicejson)
+	topic := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
 
-	methodsjson, err := strArrayToJson(methods)
-	if err != nil {
-		return nil, fmt.Errorf("Failed converting methods to json: %s", err)
-	}
-	js.Get("params").GetIndex(0).Get("supported").Set("methods", methodsjson)
-
-	eventsjson, err := strArrayToJson(events)
-	if err != nil {
-		return nil, fmt.Errorf("Failed converting events to json: %s", err)
-	}
-	js.Get("params").GetIndex(0).Get("supported").Set("events", eventsjson)
-
-	js.Get("params").GetIndex(0).Set("channel", name)
-	js.Set("time", time.Now().Unix())
-
-	json, err := js.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("Failed marshalling json: %s", err)
-	}
-
-	log.Printf("Announced channel %s", json)
-
-	topicBase := "$device/" + deviceguid + "/channel/" + channelguid + "/" + protocol
-
-	log.Printf("Announced channel %s to %s", json, topicBase+"/announce")
-
-	pubReceipt := d.driver.mqtt.Publish(MQTT.QoS(0), topicBase+"/announce", json)
-	<-pubReceipt
-	filter, err := MQTT.NewTopicFilter(topicBase, 0)
-	if err != nil {
-		return nil, fmt.Errorf("Failed creating topic filter: %s", err)
-	}
-
-	_, err = d.driver.mqtt.StartSubscription(func(client *MQTT.MqttClient, message MQTT.Message) {
-		json, _ := simplejson.NewJson(message.Payload())
-		method, _ := json.Get("method").String()
-		params := json.Get("params")
-		serviceCallback(method, params)
-
-	}, filter)
+	exportedService, err := d.rpcServer.RegisterService(channel, topic)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed starting mqtt subscription: %s", err)
+		return fmt.Errorf("Failed to register channel service on %s : %s", topic, err)
 	}
-	channelBus := NewChannelBus(name, protocol, d)
 
-	return channelBus, nil
+	events := []string{}
+
+	channelAnnouncement := &model.Channel{
+		ID:       channelguid,
+		Protocol: protocol,
+		Name:     name,
+		Supported: &model.ChannelSupported{
+			Methods: &exportedService.Methods,
+			Events:  &events,
+		},
+		Device: &model.Device{},
+	}
+
+	js, err := d.devicejson.MarshalJSON()
+	json.Unmarshal(js, &channelAnnouncement.Device)
+
+	// send out channel announcement
+	err = d.rpcServer.SendNotification(topic+"/announce", channelAnnouncement) // TODO: This should probably be exposed somewhere else
+
+	if err != nil {
+		return fmt.Errorf("Failed sending channel announcement: %s", err)
+	}
+
+	d.log.Debugf("Added channel: %s (protocol: %s) with methods: %s", name, protocol, strings.Join(exportedService.Methods, ", "))
+
+	switch channel := channel.(type) {
+	case eventingService:
+		channel.SetEventHandler(func(event string, payload interface{}) error {
+			return exportedService.SendEvent(event, payload)
+		})
+	}
+
+	return nil
 }
