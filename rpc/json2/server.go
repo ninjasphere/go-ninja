@@ -53,7 +53,7 @@ type serverResponse struct {
 	// The Object that was returned by the invoked method. This must be null
 	// in case there was an error invoking the method.
 	// As per spec the member will be omitted if there was an error.
-	Result interface{} `json:"response,omitempty"` // FIXME: XXX: TODO: This json property name should be 'result'
+	Result interface{} `json:"result,omitempty"`
 
 	// An Error object if there was an error invoking the method. It must be
 	// null if there was no error.
