@@ -16,7 +16,7 @@ type Logger struct {
 // GetLogger builds a ninja logger with the given name
 func GetLogger(name string) *Logger {
 	l := loggo.GetLogger(name)
-	l.SetLogLevel(loggo.INFO)
+	l.SetLogLevel(loggo.DEBUG)
 	return &Logger{l}
 }
 
