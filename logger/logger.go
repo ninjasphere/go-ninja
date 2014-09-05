@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/bugsnag/bugsnag-go"
@@ -42,5 +43,12 @@ func (l *Logger) HandleErrorf(err error, msg string, args ...interface{}) {
 func (l *Logger) FatalErrorf(err error, msg string, args ...interface{}) {
 	l.Errorf(msg, args)
 	bugsnag.Notify(err)
+	os.Exit(1)
+}
+
+// FatalErrorf This notifies bugsnag and logs the error based on the args then quits
+func (l *Logger) Fatalf(msg string, args ...interface{}) {
+	l.Errorf(msg, args)
+	bugsnag.Notify(fmt.Errorf(msg, args))
 	os.Exit(1)
 }
