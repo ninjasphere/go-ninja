@@ -98,14 +98,20 @@ func (n *NinjaConnection) AnnounceDriver(id string, name string, driverPath stri
 		return nil, err
 	}
 
-	receipt := n.mqtt.Publish(MQTT.QoS(1), "$node/"+serial+"/app/"+id+"/event/announce", json)
+	topic := fmt.Sprintf("$node/%s/app/%s/event/announce", serial, id)
+	n.log.Infof("Sending message to topic: %s payload: %s", string(json))
+
+	receipt := n.mqtt.Publish(MQTT.QoS(1), topic, json)
 	<-receipt
+
+	log := logger.GetLogger(fmt.Sprintf("driverbus.%s", id))
 
 	driverBus := &DriverBus{
 		id:      id,
 		name:    name,
 		mqtt:    n.mqtt,
 		version: version,
+		log:     log,
 	}
 
 	return driverBus, nil

@@ -1,11 +1,11 @@
 package ninja
 
 import (
-	"log"
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/bitly/go-simplejson"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
 // DriverBus Context for driver related announcements.
@@ -14,6 +14,7 @@ type DriverBus struct {
 	name    string
 	version string
 	mqtt    *MQTT.MqttClient
+	log     *logger.Logger
 }
 
 // AnnounceDevice Announce a new device has been discovered.
@@ -55,7 +56,7 @@ func (d *DriverBus) AnnounceDevice(id string, idType string, name string, sigs *
 		return nil, err
 	}
 
-	log.Printf("Outoging announcement : %s", json)
+	d.log.Infof("Outging announcement : %s", json)
 
 	receipt := d.mqtt.Publish(MQTT.QoS(1), "$device/"+guid+"/announce", json)
 	<-receipt
