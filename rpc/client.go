@@ -98,7 +98,7 @@ func (client *Client) handleResponse(message mqtt.Message) {
 	id, err := client.codec.DecodeIdAndError(message.Payload())
 
 	if id == nil {
-		log.Infof("Failed to decode reply: %s error: %s", message.Payload(), err)
+		log.Debugf("Failed to decode reply: %s error: %s", message.Payload(), err)
 		return
 	}
 
