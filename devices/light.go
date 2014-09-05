@@ -67,40 +67,30 @@ func (d *LightDevice) SetLightState(state *LightDeviceState) error {
 	d.Lock()
 	defer d.Unlock()
 
-	var err error
-
 	d.state = state
 
 	if state.OnOff != nil {
-		err = d.onOff.SendEvent("state", *state.OnOff)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Failed emitting on-off state: %s", err)
+		if err := d.onOff.SendEvent("state", *state.OnOff); err != nil {
+			return fmt.Errorf("Failed emitting on-off state: %s", err)
+		}
 	}
 
 	if state.Brightness != nil {
-		err = d.brightness.SendEvent("state", *state.Brightness)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Failed emitting brightness state: %s", err)
+		if err := d.brightness.SendEvent("state", *state.Brightness); err != nil {
+			return fmt.Errorf("Failed emitting brightness state: %s", err)
+		}
 	}
 
 	if state.Color != nil {
-		err = d.color.SendEvent("state", *state.Color)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Failed emitting color state: %s", err)
+		if err = d.color.SendEvent("state", *state.Color); err != nil {
+			return fmt.Errorf("Failed emitting color state: %s", err)
+		}
 	}
 
 	if state.Transition != nil {
-		err = d.transition.SendEvent("state", *state.Transition)
-	}
-
-	if err != nil {
-		return fmt.Errorf("Failed emitting transition state: %s", err)
+		if err := d.transition.SendEvent("state", *state.Transition); err != nil {
+			return fmt.Errorf("Failed emitting transition state: %s", err)
+		}
 	}
 
 	return nil
@@ -108,6 +98,7 @@ func (d *LightDevice) SetLightState(state *LightDeviceState) error {
 
 func (d *LightDevice) SetBatch(state *LightDeviceState) error {
 	d.Lock()
+	defer d.Unlock()
 
 	mergedState := d.state.Clone()
 	if state.OnOff != nil {
@@ -122,10 +113,8 @@ func (d *LightDevice) SetBatch(state *LightDeviceState) error {
 	if state.Transition != nil {
 		mergedState.Transition = state.Transition
 	}
-	err := d.ApplyLightState(mergedState)
 
-	d.Unlock()
-	return err
+	return d.ApplyLightState(mergedState)
 }
 
 func (d *LightDevice) SetOnOff(state bool) error {
@@ -134,10 +123,10 @@ func (d *LightDevice) SetOnOff(state bool) error {
 
 	var err error
 
-	if state == true {
-		d.log.Infof("Turning Off")
-	} else {
+	if state {
 		d.log.Infof("Turning On")
+	} else {
+		d.log.Infof("Turning Off")
 	}
 
 	if d.ApplyOnOff != nil {
