@@ -82,7 +82,7 @@ func (d *LightDevice) SetLightState(state *LightDeviceState) error {
 	}
 
 	if state.Color != nil {
-		if err = d.color.SendEvent("state", *state.Color); err != nil {
+		if err := d.color.SendEvent("state", *state.Color); err != nil {
 			return fmt.Errorf("Failed emitting color state: %s", err)
 		}
 	}
@@ -142,6 +142,7 @@ func (d *LightDevice) SetOnOff(state bool) error {
 }
 
 func (d *LightDevice) SetBrightness(state float64) error {
+
 	if d.brightness == nil {
 		return fmt.Errorf("This device does not have a brightness channel")
 	}
