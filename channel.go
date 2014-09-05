@@ -38,9 +38,11 @@ func (cb *ChannelBus) SendEvent(event string, payload *simplejson.Json) error {
 		return err
 	}
 
-	cb.log.Infof("Sending event:%s payload:%s", event, json)
+	topic := fmt.Sprintf("$driver/%s/device/%s/channel/%s/%s/event/%s", cb.device.driver.id, cb.device.id, cb.name, cb.protocol, event)
 
-	receipt := cb.device.driver.mqtt.Publish(MQTT.QoS(0), "$driver/"+cb.device.driver.id+"/device/"+cb.device.id+"/channel/"+cb.name+"/"+cb.protocol+"/event/"+event, json)
+	cb.log.Infof("Sending topic:%s event:%s payload:%s", topic, event, json)
+
+	receipt := cb.device.driver.mqtt.Publish(MQTT.QoS(0), topic, json)
 	<-receipt
 
 	return nil
