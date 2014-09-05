@@ -19,8 +19,6 @@ import (
 
 // clientRequest represents a JSON-RPC request sent by a client.
 type clientRequest struct {
-	// JSON-RPC protocol.
-	Version string `json:"jsonrpc"`
 
 	// A String containing the name of the method to be invoked.
 	Method string `json:"method"`
@@ -31,14 +29,17 @@ type clientRequest struct {
 	// The request id. This can be of any type. It is used to match the
 	// response with the request that it is replying to.
 	Id uint32 `json:"id"`
+
+	// JSON-RPC protocol.
+	Version string `json:"jsonrpc"`
 }
 
 // clientResponse represents a JSON-RPC response returned to a client.
 type clientResponse struct {
-	Version string           `json:"jsonrpc"`
 	Result  *json.RawMessage `json:"result"`
 	Error   *json.RawMessage `json:"error"`
 	Id      *json.RawMessage `json:"id"`
+	Version string           `json:"jsonrpc"`
 }
 
 func NewClientCodec() *ClientCodec {

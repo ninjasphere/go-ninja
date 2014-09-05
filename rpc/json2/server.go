@@ -30,8 +30,6 @@ var log = logger.GetLogger("mqtt-jsonrpc2")
 
 // serverRequest represents a JSON-RPC request received by the server.
 type serverRequest struct {
-	// JSON-RPC protocol.
-	Version string `json:"jsonrpc"`
 
 	// A String containing the name of the method to be invoked.
 	Method *string `json:"method,omitEmpty"`
@@ -43,12 +41,13 @@ type serverRequest struct {
 	// Our implementation will not do type checking for id.
 	// It will be copied as it is.
 	Id *json.RawMessage `json:"id,omitEmpty"`
+
+	// JSON-RPC protocol.
+	Version string `json:"jsonrpc"`
 }
 
 // serverResponse represents a JSON-RPC response returned by the server.
 type serverResponse struct {
-	// JSON-RPC protocol.
-	Version string `json:"jsonrpc"`
 
 	// The Object that was returned by the invoked method. This must be null
 	// in case there was an error invoking the method.
@@ -62,6 +61,9 @@ type serverResponse struct {
 
 	// This must be the same id as the request it is responding to.
 	Id *json.RawMessage `json:"id"`
+
+	// JSON-RPC protocol.
+	Version string `json:"jsonrpc"`
 }
 
 // ----------------------------------------------------------------------------
