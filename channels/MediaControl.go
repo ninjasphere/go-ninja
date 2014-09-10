@@ -2,6 +2,32 @@ package channels
 
 import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
+type MediaControlEvent int
+
+const (
+	MediaControlEventPlaying MediaControlEvent = iota
+	MediaControlEventPaused
+	MediaControlEventStopped
+	MediaControlEventBuffering
+	MediaControlEventBusy
+	MediaControlEventIdle
+	MediaControlEventInactive
+)
+
+var mediaControlEventNames = []string{
+	"playing",
+	"paused",
+	"stopped",
+	"buffering",
+	"busy",
+	"idle",
+	"inactive",
+}
+
+func (e *MediaControlEvent) Name() string {
+	return mediaControlEventNames[int(*e)]
+}
+
 type MediaControlDevice interface {
 	Play() error
 	Pause() error
@@ -43,4 +69,8 @@ func (c *MediaControlChannel) Next(message mqtt.Message, _, reply *interface{}) 
 
 func (c *MediaControlChannel) Previous(message mqtt.Message, _, reply *interface{}) error {
 	return c.device.Previous()
+}
+
+func (c *MediaControlChannel) SendState(event MediaControlEvent) error {
+	return c.SendEvent(event.Name(), nil)
 }
