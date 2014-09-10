@@ -43,9 +43,13 @@ type eventingService interface {
 	SetEventHandler(func(event string, payload interface{}) error)
 }
 
+func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string) error {
+	return d.AddChannelWithSupported(channel, name, protocol, nil, nil)
+}
+
 // AddChannel Exports a channel as an RPC service, and announces it
 // If the channel implements eventingService, it will be given a function to send events
-func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string) error {
+func (d *DeviceBus) AddChannelWithSupported(channel interface{}, name string, protocol string, supportedMethods *[]string, supportedEvents *[]string) error {
 
 	deviceguid, _ := d.devicejson.Get("guid").String()
 	channelguid := GetGUID(name + protocol)
@@ -58,15 +62,22 @@ func (d *DeviceBus) AddChannel(channel interface{}, name string, protocol string
 		return fmt.Errorf("Failed to register channel service on %s : %s", topic, err)
 	}
 
-	events := []string{}
+	if supportedMethods == nil {
+		supportedMethods = &exportedService.Methods
+	}
+
+	if supportedEvents == nil {
+		events := []string{}
+		supportedEvents = &events
+	}
 
 	channelAnnouncement := &model.Channel{
 		ID:       channelguid,
 		Protocol: protocol,
 		Name:     name,
 		Supported: &model.ChannelSupported{
-			Methods: &exportedService.Methods,
-			Events:  &events,
+			Methods: supportedMethods,
+			Events:  supportedEvents,
 		},
 		Device: &model.Device{},
 	}
