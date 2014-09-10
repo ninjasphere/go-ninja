@@ -72,11 +72,33 @@ func (d *MediaPlayerDevice) Previous() error {
 	return d.ApplyPlaylistJump(-1)
 }
 
-func (d *MediaPlayerDevice) EnableControlChannel() error {
+func (d *MediaPlayerDevice) EnableControlChannel(supportedEvents []string) error {
 
 	d.controlChannel = channels.NewMediaControlChannel(d)
 
-	err := d.bus.AddChannel(d.controlChannel, "control", "media-control")
+	var supportedMethods []string
+
+	if d.ApplyTogglePlay != nil {
+		supportedMethods = append(supportedMethods, "togglePlay")
+	}
+
+	if d.ApplyPlayPause != nil {
+		supportedMethods = append(supportedMethods, "play", "pause")
+
+		if d.ApplyTogglePlay == nil {
+			supportedMethods = append(supportedMethods, "togglePlay")
+		}
+	}
+
+	if d.ApplyPlaylistJump != nil {
+		supportedMethods = append(supportedMethods, "next", "previous")
+	}
+
+	if d.ApplyStop != nil {
+		supportedMethods = append(supportedMethods, "stop")
+	}
+
+	err := d.bus.AddChannelWithSupported(d.controlChannel, "control", "media-control", &supportedMethods, &supportedEvents)
 	if err != nil {
 		return fmt.Errorf("Failed to create media-control channel: %s", err)
 	}
