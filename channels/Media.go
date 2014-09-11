@@ -17,13 +17,13 @@ type MediaChannel struct {
 }
 
 type mediaItem struct {
-	ID          *string
-	ExternalIDs *map[string]string
-	ContentType *MediaContentType
-	Type        *string
-	Title       *string
-	Image       *MediaItemImage
-	Duration    *int
+	ID          *string            `json:"id,omitempty"`
+	ExternalIDs *map[string]string `json:"externalIds,omitempty"`
+	ContentType *MediaContentType  `json:"contentType,omitempty"`
+	Type        *string            `json:"type,omitempty"`
+	Title       *string            `json:"title,omitempty"`
+	Image       *MediaItemImage    `json:"image,omitempty"`
+	Duration    *int               `json:"duration,omitempty"`
 }
 
 type MediaContentType string
@@ -36,43 +36,43 @@ func (m *MediaContentType) IsValid() bool {
 }
 
 type MediaItemImage struct {
-	URL    string
-	Width  *int
-	Height *int
+	URL    string `json:"url"`
+	Width  *int   `json:"width,omitempty"`
+	Height *int   `json:"height,omitempty"`
 }
 
 type GenericMediaItem struct {
 	mediaItem
-	Subtitle *string
+	Subtitle *string `json:"subtitle,omitempty"`
 }
 
 type GenericMediaState struct {
-	media *GenericMediaItem
+	Media *GenericMediaItem `json:"media,omitempty"`
 }
 
 type MusicTrackMediaItem struct {
 	mediaItem
-	Artists *[]MediaItemArtist
+	Artists *[]MediaItemArtist `json:"artists,omitempty"`
 }
 
 type MusicTrackMediaState struct {
-	media    *MusicTrackMediaItem
-	position *int
+	media    *MusicTrackMediaItem `json:"media,omitempty"`
+	Position *int                 `json:"position,omitempty"`
 }
 
 type MediaItemArtist struct {
-	ID    *string
-	IDs   *map[string]string
-	Name  string
-	Image *MediaItemImage
+	ID          *string            `json:"id,omitempty"`
+	externalIds *map[string]string `json:"externalIds,omitempty"`
+	Name        string             `json:"name"`
+	Image       *MediaItemImage    `json:"image,omitempty"`
 }
 
 type MediaItemAlbum struct {
-	ID     *string
-	IDs    *map[string]string
-	Name   string
-	Image  *MediaItemImage
-	Genres *[]string
+	ID          *string
+	externalIds *map[string]string `json:"externalIds,omitempty"`
+	Name        string             `json:"name"`
+	Image       *MediaItemImage    `json:"image,omitempty"`
+	Genres      *[]string          `json:"genres,omitempty"`
 }
 
 func NewMediaChannel(device MediaDevice) *MediaChannel {
