@@ -64,9 +64,6 @@ type LightDevice struct {
 }
 
 func (d *LightDevice) SetLightState(state *LightDeviceState) error {
-	d.Lock()
-	defer d.Unlock()
-
 	d.state = state
 
 	if state.OnOff != nil {
