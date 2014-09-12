@@ -41,11 +41,11 @@ type SwitchDevice struct {
 	// if only a single channel state is being set.
 	ApplyOnOff func(state bool) error
 
-	bus   *ninja.DeviceBus
-	state *SwitchDeviceState
-	batch bool
-	log   *logger.Logger
-	onOff *channels.OnOffChannel
+	bus          *ninja.DeviceBus
+	state        *SwitchDeviceState
+	batch        bool
+	log          *logger.Logger
+	onOffChannel *channels.OnOffChannel
 }
 
 func (d *SwitchDevice) SetSwitchState(state *SwitchDeviceState) error {
@@ -55,12 +55,16 @@ func (d *SwitchDevice) SetSwitchState(state *SwitchDeviceState) error {
 	d.state = state
 
 	if state.OnOff != nil {
-		if err := d.onOff.SendEvent("state", *state.OnOff); err != nil {
+		if err := d.onOffChannel.SendEvent("state", *state.OnOff); err != nil {
 			return fmt.Errorf("Failed emitting on-off state: %s", err)
 		}
 	}
 
 	return nil
+}
+
+func (d *SwitchDevice) UpdateSwitchOnOffState(on bool) error {
+	return d.onOffChannel.SendState(&on)
 }
 
 func (d *SwitchDevice) SetBatch(state *SwitchDeviceState) error {
@@ -108,8 +112,8 @@ func (d *SwitchDevice) ToggleOnOff() error {
 }
 
 func (d *SwitchDevice) EnableOnOffChannel() error {
-	d.onOff = channels.NewOnOffChannel(d)
-	return d.bus.AddChannel(d.onOff, "on-off", "on-off")
+	d.onOffChannel = channels.NewOnOffChannel(d)
+	return d.bus.AddChannel(d.onOffChannel, "on-off", "on-off")
 }
 
 func CreateSwitchDevice(name string, bus *ninja.DeviceBus) (*SwitchDevice, error) {

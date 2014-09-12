@@ -13,6 +13,10 @@ type OnOffChannel struct {
 	device OnOffDevice
 }
 
+type OnOffState struct {
+	OnOff *bool `json:"onoff,omitempty"`
+}
+
 func NewOnOffChannel(device OnOffDevice) *OnOffChannel {
 	return &OnOffChannel{baseChannel{}, device}
 }
@@ -31,4 +35,10 @@ func (c *OnOffChannel) Toggle(message mqtt.Message, _, reply *interface{}) error
 
 func (c *OnOffChannel) Set(message mqtt.Message, state *bool, reply *interface{}) error {
 	return c.device.SetOnOff(*state)
+}
+
+func (c *OnOffChannel) SendState(on *bool) error {
+	return c.SendEvent("state", &OnOffState{
+		OnOff: on,
+	})
 }
