@@ -4,9 +4,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// TODO: Note: This isn't actually json-rpc2. It's got the wrong reply property (response vs. result)
-// It's "Ninja RPC". Until we fix it. If we fix it.
-
 package json2
 
 import (
@@ -41,6 +38,16 @@ type serverRequest struct {
 	// Our implementation will not do type checking for id.
 	// It will be copied as it is.
 	Id *json.RawMessage `json:"id,omitEmpty"`
+
+	// JSON-RPC protocol.
+	Version string `json:"jsonrpc"`
+}
+
+// serverNotification represents a JSON-RPC notification sent by the server
+type serverNotification struct {
+
+	// A Structured value to pass
+	Params *json.RawMessage `json:"params"`
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
@@ -87,7 +94,7 @@ func (c *Codec) NewRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
 // SendNotification sends a JSON-RPC notification
 func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload interface{}) error {
 
-	notification := &serverRequest{
+	notification := &serverNotification{
 		Version: Version,
 	}
 
