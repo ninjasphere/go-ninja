@@ -64,6 +64,11 @@ func (d *DeviceBus) AddChannelWithSupported(channel interface{}, name string, pr
 
 	if supportedMethods == nil {
 		supportedMethods = &exportedService.Methods
+	} else {
+		// TODO: Check that all strings in supportedMethods exist in exportedService.Methods
+		if len(*supportedMethods) > len(exportedService.Methods) {
+			return fmt.Errorf("The number of actual exported methods is less than the number said to be exported. Check the method signatures of the channel.")
+		}
 	}
 
 	if supportedEvents == nil {

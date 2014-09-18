@@ -20,6 +20,8 @@ type MediaPlayerDevice struct {
 	ApplyVolumeDown  func() error
 	ApplyVolumeUp    func() error
 
+	ApplyPlayURL func(url string, queue bool) error
+
 	log *logger.Logger
 	bus *ninja.DeviceBus
 
@@ -29,6 +31,8 @@ type MediaPlayerDevice struct {
 	volumeChannel *channels.VolumeChannel
 	volumeState   float64
 	mutedState    bool
+
+	mediaChannel *channels.MediaChannel
 }
 
 func (d *MediaPlayerDevice) UpdateControlState(state channels.MediaControlEvent) error {
@@ -152,6 +156,10 @@ func (d *MediaPlayerDevice) Previous() error {
 	return d.ApplyPlaylistJump(-1)
 }
 
+func (d *MediaPlayerDevice) PlayURL(url string, queue bool) error {
+	return d.ApplyPlayURL(url, queue)
+}
+
 func (d *MediaPlayerDevice) EnableControlChannel(supportedEvents []string) error {
 
 	d.controlChannel = channels.NewMediaControlChannel(d)
@@ -213,6 +221,30 @@ func (d *MediaPlayerDevice) EnableVolumeChannel() error {
 	err := d.bus.AddChannelWithSupported(d.volumeChannel, "volume", "volume", &supportedMethods, &supportedEvents)
 	if err != nil {
 		return fmt.Errorf("Failed to create volume channel: %s", err)
+	}
+
+	return nil
+}
+
+func (d *MediaPlayerDevice) UpdateMusicMediaState(item *channels.MusicTrackMediaItem, position *int) error {
+	return d.mediaChannel.SendMusicTrackState(item, position)
+}
+
+func (d *MediaPlayerDevice) EnableMediaChannel() error {
+
+	d.mediaChannel = channels.NewMediaChannel(d)
+
+	var supportedMethods []string
+
+	if d.ApplyPlayURL != nil {
+		supportedMethods = append(supportedMethods, "playUrl")
+	}
+
+	supportedEvents := []string{"state"}
+
+	err := d.bus.AddChannelWithSupported(d.mediaChannel, "media", "media", &supportedMethods, &supportedEvents)
+	if err != nil {
+		return fmt.Errorf("Failed to create media channel: %s", err)
 	}
 
 	return nil

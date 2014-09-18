@@ -16,7 +16,7 @@ type MediaChannel struct {
 	device MediaDevice
 }
 
-type mediaItem struct {
+type MediaItem struct {
 	ID          *string            `json:"id,omitempty"`
 	ExternalIDs *map[string]string `json:"externalIds,omitempty"`
 	ContentType *MediaContentType  `json:"contentType,omitempty"`
@@ -42,7 +42,7 @@ type MediaItemImage struct {
 }
 
 type GenericMediaItem struct {
-	mediaItem
+	MediaItem
 	Subtitle *string `json:"subtitle,omitempty"`
 }
 
@@ -51,12 +51,19 @@ type GenericMediaState struct {
 }
 
 type MusicTrackMediaItem struct {
-	mediaItem
-	Artists *[]MediaItemArtist `json:"artists,omitempty"`
+	ID          *string            `json:"id,omitempty"`
+	ExternalIDs *map[string]string `json:"externalIds,omitempty"`
+	ContentType *MediaContentType  `json:"contentType,omitempty"`
+	Type        *string            `json:"type,omitempty"`
+	Title       *string            `json:"title,omitempty"`
+	Image       *MediaItemImage    `json:"image,omitempty"`
+	Duration    *int               `json:"duration,omitempty"`
+	Artists     *[]MediaItemArtist `json:"artists,omitempty"`
+	Album       *MediaItemAlbum    `json:"album,omitempty"`
 }
 
 type MusicTrackMediaState struct {
-	media    *MusicTrackMediaItem `json:"media,omitempty"`
+	Media    *MusicTrackMediaItem `json:"media,omitempty"`
 	Position *int                 `json:"position,omitempty"`
 }
 
@@ -68,7 +75,7 @@ type MediaItemArtist struct {
 }
 
 type MediaItemAlbum struct {
-	ID          *string
+	ID          *string            `json:"id,omitempty"`
 	externalIds *map[string]string `json:"externalIds,omitempty"`
 	Name        string             `json:"name"`
 	Image       *MediaItemImage    `json:"image,omitempty"`
@@ -79,12 +86,12 @@ func NewMediaChannel(device MediaDevice) *MediaChannel {
 	return &MediaChannel{baseChannel{}, device}
 }
 
-func (c *MediaChannel) PlayUrl(message mqtt.Message, url string, reply *interface{}) error {
-	return c.device.PlayURL(url, false)
+func (c *MediaChannel) PlayUrl(message mqtt.Message, url *string, reply *interface{}) error {
+	return c.device.PlayURL(*url, false)
 }
 
-func (c *MediaChannel) QueueUrl(message mqtt.Message, url string, reply *interface{}) error {
-	return c.device.PlayURL(url, true)
+func (c *MediaChannel) QueueUrl(message mqtt.Message, url *string, reply *interface{}) error {
+	return c.device.PlayURL(*url, true)
 }
 
 func (c *MediaChannel) SendGenericState(state *GenericMediaItem) error {
