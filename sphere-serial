@@ -1,8 +1,0 @@
-#!/bin/bash
-
-SERIAL_UTIL="/opt/ninjablocks/bin/sphere-serial"
-if [[ -f $SERIAL_UTIL ]]; then
-  exec SERIAL_UTIL
-else
-  echo -n "TESTSERIAL"
-fi
