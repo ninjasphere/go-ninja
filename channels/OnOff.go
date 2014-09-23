@@ -1,6 +1,6 @@
 package channels
 
-import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import "github.com/ninjasphere/go-ninja/rpc"
 
 type OnOffDevice interface {
 	ToggleOnOff() error
@@ -13,32 +13,28 @@ type OnOffChannel struct {
 	device OnOffDevice
 }
 
-type OnOffState struct {
-	OnOff *bool `json:"onoff,omitempty"`
-}
-
 func NewOnOffChannel(device OnOffDevice) *OnOffChannel {
-	return &OnOffChannel{baseChannel{}, device}
+	return &OnOffChannel{baseChannel{
+		protocol: "on-off",
+	}, device}
 }
 
-func (c *OnOffChannel) TurnOn(message mqtt.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) TurnOn(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.SetOnOff(true)
 }
 
-func (c *OnOffChannel) TurnOff(message mqtt.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) TurnOff(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.SetOnOff(false)
 }
 
-func (c *OnOffChannel) Toggle(message mqtt.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) Toggle(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.ToggleOnOff()
 }
 
-func (c *OnOffChannel) Set(message mqtt.Message, state *bool, reply *interface{}) error {
+func (c *OnOffChannel) Set(message *rpc.Message, state *bool, reply *interface{}) error {
 	return c.device.SetOnOff(*state)
 }
 
 func (c *OnOffChannel) SendState(on *bool) error {
-	return c.SendEvent("state", &OnOffState{
-		OnOff: on,
-	})
+	return c.SendEvent("state", on)
 }

@@ -8,18 +8,17 @@ package rpc
 
 import (
 	"fmt"
+	log2 "log"
 	"reflect"
 	"sync"
 	"unicode"
 	"unicode/utf8"
-
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
 var (
-	// Precompute the reflect.Type of error and mqtt.Message
+	// Precompute the reflect.Type of error and *rpc.Message
 	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfRequest = reflect.TypeOf((*mqtt.Message)(nil)).Elem()
+	typeOfRequest = reflect.TypeOf((*Message)(nil))
 )
 
 // ----------------------------------------------------------------------------
@@ -70,36 +69,55 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 	}
 	// Setup methods.
 	for i := 0; i < s.rcvrType.NumMethod(); i++ {
+
 		method := s.rcvrType.Method(i)
 		mtype := method.Type
+
+		if mtype.NumIn() == 1 {
+			continue
+		}
+
+		if mtype.NumIn() >= 2 {
+			reqType := mtype.In(1)
+			if reqType != typeOfRequest {
+				continue
+			}
+		}
+
 		// Method must be exported.
 		if method.PkgPath != "" {
+			log.Fatalf("RPC Method '%s' must be exported", method.Name)
 			continue
 		}
-		// Method needs four ins: receiver, *mqtt.Message, *args, *reply.
+		// Method needs four ins: receiver, *rpc.Message, *args, *reply.
 		if mtype.NumIn() != 4 {
+			log2.Fatalf("RPC Method '%s' must have three arguments (*rpc.Message, *args, *reply)", method.Name)
 			continue
 		}
-		// First argument must be a pointer and must be mqtt.Message.
-		reqType := mtype.In(1)
-		if reqType != typeOfRequest {
-			continue
-		}
+		// First argument must be a pointer and must be rpc.Message.
+		//reqType := mtype.In(1)
+		//if reqType != typeOfRequest {
+		//	continue
+		//}
 		// Second argument must be a pointer and must be exported.
 		args := mtype.In(2)
 		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
+			log2.Fatalf("RPC Method '%s' second argument '%s' must be a pointer and exported", method.Name, args.Name())
 			continue
 		}
 		// Third argument must be a pointer and must be exported.
 		reply := mtype.In(3)
 		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
+			log2.Fatalf("RPC Method '%s' third argument '%s' must be a pointer and exported", method.Name, reply.Name())
 			continue
 		}
 		// Method needs one out: error.
 		if mtype.NumOut() != 1 {
+			log2.Fatalf("RPC Method '%s' must return only an error", method.Name)
 			continue
 		}
 		if returnType := mtype.Out(0); returnType != typeOfError {
+			log2.Fatalf("RPC Method '%s' must return only an error", method.Name)
 			continue
 		}
 		s.methods[method.Name] = &serviceMethod{

@@ -1,9 +1,6 @@
 package channels
 
-import (
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/davecgh/go-spew/spew"
-)
+import "github.com/ninjasphere/go-ninja/rpc"
 
 type ColorDevice interface {
 	SetColor(state *ColorState) error
@@ -27,7 +24,6 @@ func NewColorChannel(device ColorDevice) *ColorChannel {
 	return &ColorChannel{baseChannel{}, device}
 }
 
-func (c *ColorChannel) Set(message mqtt.Message, state *ColorState, reply *interface{}) error {
-	spew.Dump("Setting colour state", state)
+func (c *ColorChannel) Set(message *rpc.Message, state *ColorState, reply *interface{}) error {
 	return c.device.SetColor(state)
 }

@@ -15,6 +15,7 @@ import (
 
 var log = logger.GetLogger("rpc")
 
+// ClientCodec encodes and decodes the calls and replies (currently, to json)
 type ClientCodec interface {
 	EncodeClientRequest(call *Call) ([]byte, error)
 	DecodeIdAndError(msg []byte) (*uint32, error)
@@ -29,7 +30,7 @@ type Call struct {
 	Reply         interface{} // The reply from the function (*struct).
 	Error         error       // After completion, the error status.
 	Done          chan *Call  // Strobes when call is complete.
-	Id            uint32      // Used to map responses
+	ID            uint32      // Used to map responses
 }
 
 // Client represents an RPC Client.
@@ -57,7 +58,7 @@ func (client *Client) send(call *Call) (*Call, error) {
 
 	// Register this call, if we are expecting a reply
 	if call.Done != nil {
-		call.Id = rand.Uint32()
+		call.ID = rand.Uint32()
 	}
 
 	payload, err := client.codec.EncodeClientRequest(call)
@@ -72,7 +73,7 @@ func (client *Client) send(call *Call) (*Call, error) {
 	<-pubReceipt
 
 	if call.Done != nil {
-		client.pending[call.Id] = call
+		client.pending[call.ID] = call
 
 		filter, err := mqtt.NewTopicFilter(call.Topic+"/reply", 0)
 		if err != nil {

@@ -1,6 +1,6 @@
 package channels
 
-import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import "github.com/ninjasphere/go-ninja/rpc"
 
 type MediaControlEvent int
 
@@ -47,27 +47,27 @@ func NewMediaControlChannel(device MediaControlDevice) *MediaControlChannel {
 	return &MediaControlChannel{baseChannel{}, device}
 }
 
-func (c *MediaControlChannel) Play(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Play(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.Play()
 }
 
-func (c *MediaControlChannel) Pause(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Pause(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.Pause()
 }
 
-func (c *MediaControlChannel) TogglePlay(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) TogglePlay(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.TogglePlay()
 }
 
-func (c *MediaControlChannel) Stop(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Stop(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.Stop()
 }
 
-func (c *MediaControlChannel) Next(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Next(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.Next()
 }
 
-func (c *MediaControlChannel) Previous(message mqtt.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Previous(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.Previous()
 }
 

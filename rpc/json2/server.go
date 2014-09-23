@@ -37,7 +37,7 @@ type serverRequest struct {
 	// The request id. MUST be a string, number or null.
 	// Our implementation will not do type checking for id.
 	// It will be copied as it is.
-	Id *json.RawMessage `json:"id,omitEmpty"`
+	ID *json.RawMessage `json:"id,omitempty"`
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
@@ -67,7 +67,7 @@ type serverResponse struct {
 	Error *Error `json:"error,omitempty"`
 
 	// This must be the same id as the request it is responding to.
-	Id *json.RawMessage `json:"id"`
+	ID *json.RawMessage `json:"id"`
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
@@ -223,7 +223,7 @@ func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{})
 	res := &serverResponse{
 		Version: Version,
 		Result:  reply,
-		Id:      c.request.Id,
+		ID:      c.request.ID,
 	}
 	c.writeServerResponse(client, res)
 }
@@ -239,7 +239,7 @@ func (c *CodecRequest) WriteError(client *mqtt.MqttClient, err error) {
 	res := &serverResponse{
 		Version: Version,
 		Error:   jsonErr,
-		Id:      c.request.Id,
+		ID:      c.request.ID,
 	}
 	c.writeServerResponse(client, res)
 }
@@ -247,7 +247,7 @@ func (c *CodecRequest) WriteError(client *mqtt.MqttClient, err error) {
 func (c *CodecRequest) writeServerResponse(client *mqtt.MqttClient, res *serverResponse) {
 	// Id is null for notifications and they don't have a response.
 
-	if c.request.Id != nil {
+	if c.request.ID != nil {
 
 		payload, err := json.Marshal(res)
 

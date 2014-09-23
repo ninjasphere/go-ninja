@@ -1,6 +1,6 @@
 package channels
 
-import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import "github.com/ninjasphere/go-ninja/rpc"
 
 type VolumeDevice interface {
 	SetVolume(volume float64) error
@@ -24,27 +24,27 @@ func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
 	return &VolumeChannel{baseChannel{}, device}
 }
 
-func (c *VolumeChannel) Set(message mqtt.Message, state *float64, reply *interface{}) error {
+func (c *VolumeChannel) Set(message *rpc.Message, state *float64, reply *interface{}) error {
 	return c.device.SetVolume(*state)
 }
 
-func (c *VolumeChannel) VolumeUp(message mqtt.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) VolumeUp(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.VolumeUp()
 }
 
-func (c *VolumeChannel) VolumeDown(message mqtt.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) VolumeDown(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.VolumeDown()
 }
 
-func (c *VolumeChannel) Mute(message mqtt.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) Mute(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.SetMuted(true)
 }
 
-func (c *VolumeChannel) Unmute(message mqtt.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) Unmute(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.SetMuted(false)
 }
 
-func (c *VolumeChannel) ToggleMuted(message mqtt.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) ToggleMuted(message *rpc.Message, _, reply *interface{}) error {
 	return c.device.ToggleMuted()
 }
 

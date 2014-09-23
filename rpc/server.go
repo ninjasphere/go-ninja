@@ -8,6 +8,8 @@ package rpc
 
 import (
 	"reflect"
+	"unicode"
+	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
@@ -55,13 +57,13 @@ type Server struct {
 	services *serviceMap
 }
 
-type exportedService struct {
+type ExportedService struct {
 	Methods []string
 	topic   string
 	server  *Server
 }
 
-func (s *exportedService) SendEvent(event string, payload interface{}) error {
+func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 	return s.server.SendNotification(s.topic+"/event/"+event, payload)
 }
 
@@ -81,7 +83,7 @@ func (s *exportedService) SendEvent(event string, payload interface{}) error {
 //    - The method has return type error.
 //
 // All other methods are ignored.
-func (s *Server) RegisterService(receiver interface{}, topic string) (service *exportedService, err error) {
+func (s *Server) RegisterService(receiver interface{}, topic string) (service *ExportedService, err error) {
 
 	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
@@ -100,7 +102,21 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (service *e
 
 	exportedMethods, err := s.services.register(receiver, topic)
 
-	return &exportedService{Methods: exportedMethods, topic: topic, server: s}, err
+	var exportedMethodsLower []string
+
+	for _, m := range exportedMethods {
+		exportedMethodsLower = append(exportedMethodsLower, lowerFirst(m))
+	}
+
+	return &ExportedService{Methods: exportedMethodsLower, topic: topic, server: s}, err
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToLower(r)) + s[n:]
 }
 
 // SendNotification sends a one-way notification. Perhaps shouldn't be in Server....
@@ -116,6 +132,11 @@ func (s *Server) HasMethod(topic string, method string) bool {
 	return false
 }
 
+type Message struct {
+	Payload []byte
+	Topic   string
+}
+
 // ServeRequest handles an incoming Json-RPC MQTT message
 func (s *Server) serveRequest(topic string, message mqtt.Message) {
 
@@ -127,8 +148,6 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		codecReq.WriteError(s.client, errMethod)
 		return
 	}
-
-	log.Infof("TOPIC '%s' METHOD '%s'", topic, method)
 
 	serviceSpec, methodSpec, errGet := s.services.get(topic, method)
 	if errGet != nil {
@@ -145,7 +164,10 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 	reply := reflect.New(methodSpec.replyType)
 	errValue := methodSpec.method.Func.Call([]reflect.Value{
 		serviceSpec.rcvr,
-		reflect.ValueOf(message),
+		reflect.ValueOf(&Message{
+			Payload: message.Payload(),
+			Topic:   topic,
+		}),
 		args,
 		reply,
 	})

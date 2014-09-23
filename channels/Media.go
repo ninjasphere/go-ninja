@@ -3,7 +3,7 @@ package channels
 import (
 	"mime"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type MediaDevice interface {
@@ -86,11 +86,11 @@ func NewMediaChannel(device MediaDevice) *MediaChannel {
 	return &MediaChannel{baseChannel{}, device}
 }
 
-func (c *MediaChannel) PlayUrl(message mqtt.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) PlayUrl(message *rpc.Message, url *string, reply *interface{}) error {
 	return c.device.PlayURL(*url, false)
 }
 
-func (c *MediaChannel) QueueUrl(message mqtt.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) QueueUrl(message *rpc.Message, url *string, reply *interface{}) error {
 	return c.device.PlayURL(*url, true)
 }
 
