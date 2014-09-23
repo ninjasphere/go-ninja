@@ -92,13 +92,13 @@ func (c *Codec) NewRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
 }
 
 // SendNotification sends a JSON-RPC notification
-func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload interface{}) error {
+func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload ...interface{}) error {
 
 	notification := &serverNotification{
 		Version: Version,
 	}
 
-	jsonPayload, err := json.Marshal([]interface{}{payload})
+	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("Failed to marshall rpc notification: %s", err)
 	}

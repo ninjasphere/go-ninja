@@ -21,7 +21,7 @@ import (
 // Codec creates a CodecRequest to process each request.
 type Codec interface {
 	NewRequest(topic string, message mqtt.Message) CodecRequest
-	SendNotification(c *mqtt.MqttClient, topic string, payload interface{}) error
+	SendNotification(c *mqtt.MqttClient, topic string, payload ...interface{}) error
 }
 
 // CodecRequest decodes a request and encodes a response using a specific
@@ -120,8 +120,8 @@ func lowerFirst(s string) string {
 }
 
 // SendNotification sends a one-way notification. Perhaps shouldn't be in Server....
-func (s *Server) SendNotification(topic string, payload interface{}) error {
-	return s.codec.SendNotification(s.client, topic, payload)
+func (s *Server) SendNotification(topic string, params ...interface{}) error {
+	return s.codec.SendNotification(s.client, topic, params...)
 }
 
 // HasMethod returns true if the given method is registered on a topic

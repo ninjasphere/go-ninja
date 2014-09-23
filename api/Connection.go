@@ -173,6 +173,10 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 	return exportedService, nil
 }
 
+func (c *Connection) SendNotification(topic string, params ...interface{}) error {
+	return c.rpcServer.SendNotification(topic, params...)
+}
+
 // Pull this out into the scham validation pakage when we have one
 var rootSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com")
 var protocolSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com/protocol/")
