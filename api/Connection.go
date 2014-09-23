@@ -109,7 +109,7 @@ func (c *Connection) ExportChannel(device Device, channel Channel, id string) er
 		Device:   device.GetDeviceInfo(),
 	}
 
-	topic := fmt.Sprintf("$device/%s/channel/%s/", device.GetDeviceInfo().GUID, id)
+	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().GUID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
 		Schema: resolveProtocolUri(channel.GetProtocol()),
