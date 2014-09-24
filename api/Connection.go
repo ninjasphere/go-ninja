@@ -111,6 +111,10 @@ func (c *Connection) ExportDevice(device Device) error {
 
 // ExportChannel Exports a device using the given protocol, and announces it
 func (c *Connection) ExportChannel(device Device, channel Channel, id string) error {
+	return c.ExportChannelWithSupported(device, channel, id, nil, nil)
+}
+
+func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, id string, supportedMethods *[]string, supportedEvents *[]string) error {
 	announcement := &model.Channel{
 		ID:       id,
 		Protocol: channel.GetProtocol(),
@@ -120,7 +124,9 @@ func (c *Connection) ExportChannel(device Device, channel Channel, id string) er
 	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().GUID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema: resolveProtocolUri(channel.GetProtocol()),
+		Schema:           resolveProtocolUri(channel.GetProtocol()),
+		SupportedMethods: supportedMethods,
+		SupportedEvents:  supportedEvents,
 	}
 
 	_, err := c.exportService(channel, topic, announcement)

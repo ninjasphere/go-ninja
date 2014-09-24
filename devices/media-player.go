@@ -3,12 +3,15 @@ package devices
 import (
 	"fmt"
 
-	"github.com/ninjasphere/go-ninja"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/model"
 )
 
 type MediaPlayerDevice struct {
+	baseDevice
+
 	ApplyTogglePlay   func() error
 	ApplyPlayPause    func(playing bool) error
 	ApplyStop         func() error
@@ -21,9 +24,6 @@ type MediaPlayerDevice struct {
 	ApplyVolumeUp    func() error
 
 	ApplyPlayURL func(url string, queue bool) error
-
-	log *logger.Logger
-	bus *ninja.DeviceBus
 
 	controlChannel *channels.MediaControlChannel
 	controlState   channels.MediaControlEvent
@@ -186,7 +186,7 @@ func (d *MediaPlayerDevice) EnableControlChannel(supportedEvents []string) error
 		supportedMethods = append(supportedMethods, "stop")
 	}
 
-	err := d.bus.AddChannelWithSupported(d.controlChannel, "control", "media-control", &supportedMethods, &supportedEvents)
+	err := d.conn.ExportChannelWithSupported(d, d.controlChannel, "control", &supportedMethods, &supportedEvents)
 	if err != nil {
 		return fmt.Errorf("Failed to create media-control channel: %s", err)
 	}
@@ -218,7 +218,7 @@ func (d *MediaPlayerDevice) EnableVolumeChannel() error {
 
 	supportedEvents := []string{"state"}
 
-	err := d.bus.AddChannelWithSupported(d.volumeChannel, "volume", "volume", &supportedMethods, &supportedEvents)
+	err := d.conn.ExportChannelWithSupported(d, d.volumeChannel, "volume", &supportedMethods, &supportedEvents)
 	if err != nil {
 		return fmt.Errorf("Failed to create volume channel: %s", err)
 	}
@@ -242,7 +242,7 @@ func (d *MediaPlayerDevice) EnableMediaChannel() error {
 
 	supportedEvents := []string{"state"}
 
-	err := d.bus.AddChannelWithSupported(d.mediaChannel, "media", "media", &supportedMethods, &supportedEvents)
+	err := d.conn.ExportChannelWithSupported(d, d.mediaChannel, "media", &supportedMethods, &supportedEvents)
 	if err != nil {
 		return fmt.Errorf("Failed to create media channel: %s", err)
 	}
@@ -250,14 +250,23 @@ func (d *MediaPlayerDevice) EnableMediaChannel() error {
 	return nil
 }
 
-func CreateMediaPlayerDevice(name string, bus *ninja.DeviceBus) (*MediaPlayerDevice, error) {
+func CreateMediaPlayerDevice(driver ninja.Driver, info *model.Device, conn *ninja.Connection) (*MediaPlayerDevice, error) {
 
-	player := &MediaPlayerDevice{
-		bus: bus,
-		log: logger.GetLogger("MediaPlayerDevice - " + name),
+	d := &MediaPlayerDevice{
+		baseDevice: baseDevice{
+			conn:   conn,
+			driver: driver,
+			log:    logger.GetLogger("MediaPlayerDevice - " + *info.Name),
+			info:   info,
+		},
 	}
 
-	player.log.Infof("Created")
+	err := conn.ExportDevice(d)
+	if err != nil {
+		d.log.Fatalf("Failed to export device %s: %s", *info.Name, err)
+	}
 
-	return player, nil
+	d.log.Infof("Created")
+
+	return d, nil
 }
