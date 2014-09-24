@@ -3,12 +3,14 @@ package ninja
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"strings"
 
-	"github.com/bitly/go-simplejson"
+	"github.com/ninjasphere/go-ninja/model"
 )
 
 func getGUID(in ...string) string {
@@ -20,20 +22,20 @@ func getGUID(in ...string) string {
 	return str[:10]
 }
 
-func getDriverInfo(filename string) (*simplejson.Json, error) {
+func LoadModuleInfo(filename string) *model.Module {
 
-	dat, err := ioutil.ReadFile(filename)
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to read module info file '%s': %s", filename, err)
 	}
 
-	js, err := simplejson.NewJson(dat)
+	var info model.Module
+	err = json.Unmarshal(data, &info)
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to parse module info file '%s': %s", filename, err)
 	}
 
-	js.Del("scripts")
-	return js, nil
+	return &info
 }
 
 func GetNetAddress() (string, error) {

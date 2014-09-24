@@ -9,14 +9,16 @@ import (
 	"github.com/ninjasphere/go-ninja/rpc"
 )
 
-var info = model.Module{
+var info = ninja.LoadModuleInfo("./package.json")
+
+/*model.Module{
 	ID:          "com.ninjablocks.fakedriver",
 	Name:        "Fake Driver",
 	Version:     "1.0.2",
 	Description: "Just used to test go-ninja",
 	Author:      "Elliot Shepherd <elliot@ninjablocks.com>",
 	License:     "MIT",
-}
+}*/
 
 type FakeDriver struct {
 	config    *FakeDriverConfig
@@ -111,7 +113,7 @@ func (d *FakeDriver) Blarg(message *rpc.Message, in *In) (*Out, error) {
 }
 
 func (d *FakeDriver) GetModuleInfo() *model.Module {
-	return &info
+	return info
 }
 
 func (d *FakeDriver) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
