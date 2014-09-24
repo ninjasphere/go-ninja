@@ -34,7 +34,7 @@ type LightBatchChannel struct {
 	light *LightDevice
 }
 
-func (c *LightBatchChannel) SetBatch(message mqtt.Message, state *LightDeviceState, reply *interface{}) error {
+func (c *LightBatchChannel) SetBatch(message mqtt.Message, state *LightDeviceState) error {
 	return c.light.SetBatch(state)
 }
 
