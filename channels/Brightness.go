@@ -15,7 +15,7 @@ func NewBrightnessChannel(device BrightnessDevice) *BrightnessChannel {
 	return &BrightnessChannel{baseChannel{}, device}
 }
 
-func (c *BrightnessChannel) Set(message *rpc.Message, state *float64, reply *interface{}) error {
+func (c *BrightnessChannel) Set(message *rpc.Message, state *float64) error {
 	c.device.SetBrightness(*state)
 	return nil
 }

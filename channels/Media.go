@@ -86,11 +86,11 @@ func NewMediaChannel(device MediaDevice) *MediaChannel {
 	return &MediaChannel{baseChannel{}, device}
 }
 
-func (c *MediaChannel) PlayUrl(message *rpc.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) PlayUrl(message *rpc.Message, url *string) error {
 	return c.device.PlayURL(*url, false)
 }
 
-func (c *MediaChannel) QueueUrl(message *rpc.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) QueueUrl(message *rpc.Message, url *string) error {
 	return c.device.PlayURL(*url, true)
 }
 

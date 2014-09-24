@@ -15,7 +15,7 @@ func NewTransitionChannel(device TransitionDevice) *TransitionChannel {
 	return &TransitionChannel{baseChannel{}, device}
 }
 
-func (c *TransitionChannel) Set(message *rpc.Message, state *int, reply *interface{}) error {
+func (c *TransitionChannel) Set(message *rpc.Message, state *int) error {
 	c.device.SetTransition(*state)
 	return nil
 }

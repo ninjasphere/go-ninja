@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -29,7 +30,7 @@ var log = logger.GetLogger("mqtt-jsonrpc2")
 type serverRequest struct {
 
 	// A String containing the name of the method to be invoked.
-	Method *string `json:"method,omitEmpty"`
+	Method *string `json:"method,omitempty"`
 
 	// A Structured value to pass as arguments to the method.
 	Params *json.RawMessage `json:"params"`
@@ -41,16 +42,8 @@ type serverRequest struct {
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
-}
 
-// serverNotification represents a JSON-RPC notification sent by the server
-type serverNotification struct {
-
-	// A Structured value to pass
-	Params *json.RawMessage `json:"params"`
-
-	// JSON-RPC protocol.
-	Version string `json:"jsonrpc"`
+	Time int64 `json:"time"`
 }
 
 // serverResponse represents a JSON-RPC response returned by the server.
@@ -71,6 +64,8 @@ type serverResponse struct {
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
+
+	Time int64 `json:"time"`
 }
 
 // ----------------------------------------------------------------------------
@@ -87,15 +82,16 @@ type Codec struct {
 }
 
 // NewRequest returns a CodecRequest.
-func (c *Codec) NewRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
+func (c *Codec) NewRequest(topic string, msg mqtt.Message) (rpc.CodecRequest, error) {
 	return newCodecRequest(topic, msg)
 }
 
 // SendNotification sends a JSON-RPC notification
 func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload ...interface{}) error {
 
-	notification := &serverNotification{
+	notification := &serverRequest{
 		Version: Version,
+		Time:    makeTimestamp(),
 	}
 
 	jsonPayload, err := json.Marshal(payload)
@@ -124,7 +120,7 @@ func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload 
 // ----------------------------------------------------------------------------
 
 // newCodecRequest returns a new CodecRequest.
-func newCodecRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
+func newCodecRequest(topic string, msg mqtt.Message) (rpc.CodecRequest, error) {
 
 	log.Debugf("> Incoming to %s : %s", topic, msg.Payload())
 
@@ -137,20 +133,21 @@ func newCodecRequest(topic string, msg mqtt.Message) rpc.CodecRequest {
 			Message: err.Error(),
 			Data:    req,
 		}
-	}
+		log.Infof("Bad incoming json-rpc request to %s error:%s json:%s ", topic, err, msg.Payload())
+	} else {
+		method := upperFirst(*req.Method)
 
-	method := upperFirst(*req.Method)
+		req.Method = &method
 
-	req.Method = &method
-
-	if req.Version != Version {
-		err = &Error{
-			Code:    E_INVALID_REQ,
-			Message: "jsonrpc must be " + Version,
-			Data:    req,
+		if req.Version != Version {
+			err = &Error{
+				Code:    E_INVALID_REQ,
+				Message: "jsonrpc must be " + Version,
+				Data:    req,
+			}
 		}
 	}
-	return &CodecRequest{request: req, err: err, topic: topic}
+	return &CodecRequest{request: req, err: err, topic: topic}, err
 }
 
 // CodecRequest decodes and encodes a single request.
@@ -224,6 +221,7 @@ func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{})
 		Version: Version,
 		Result:  reply,
 		ID:      c.request.ID,
+		Time:    makeTimestamp(),
 	}
 	c.writeServerResponse(client, res)
 }
@@ -240,6 +238,7 @@ func (c *CodecRequest) WriteError(client *mqtt.MqttClient, err error) {
 		Version: Version,
 		Error:   jsonErr,
 		ID:      c.request.ID,
+		Time:    makeTimestamp(),
 	}
 	c.writeServerResponse(client, res)
 }
@@ -265,6 +264,10 @@ func (c *CodecRequest) writeServerResponse(client *mqtt.MqttClient, res *serverR
 			return
 		}
 	}
+}
+
+func makeTimestamp() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 type EmptyResponse struct {

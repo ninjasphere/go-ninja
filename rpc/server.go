@@ -20,7 +20,7 @@ import (
 
 // Codec creates a CodecRequest to process each request.
 type Codec interface {
-	NewRequest(topic string, message mqtt.Message) CodecRequest
+	NewRequest(topic string, message mqtt.Message) (CodecRequest, error)
 	SendNotification(c *mqtt.MqttClient, topic string, payload ...interface{}) error
 }
 
@@ -140,8 +140,16 @@ type Message struct {
 // ServeRequest handles an incoming Json-RPC MQTT message
 func (s *Server) serveRequest(topic string, message mqtt.Message) {
 
+	log.Debugf("Serving request to %s", topic)
+
 	// Create a new codec request.
-	codecReq := s.codec.NewRequest(topic, message)
+	codecReq, err := s.codec.NewRequest(topic, message)
+
+	if err != nil {
+		codecReq.WriteError(s.client, err)
+		return
+	}
+
 	// Get service method to be called.
 	method, errMethod := codecReq.Method()
 	if errMethod != nil {
@@ -161,26 +169,45 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		return
 	}
 	// Call the service method.
-	reply := reflect.New(methodSpec.replyType)
-	errValue := methodSpec.method.Func.Call([]reflect.Value{
+
+	params := []reflect.Value{
 		serviceSpec.rcvr,
 		reflect.ValueOf(&Message{
 			Payload: message.Payload(),
 			Topic:   topic,
 		}),
-		args,
-		reply,
-	})
-	// Cast the result to error if needed.
+	}
+
+	if methodSpec.argsType != nil {
+		params = append(params, args)
+	}
+
+	/*var reply reflect.Value
+	if methodSpec.replyType != nil {
+		reply = reflect.New(methodSpec.replyType)
+		params = append(params, reply)
+	}*/
+
+	retVals := methodSpec.method.Func.Call(params)
+	// Cast the last result to error if needed.
 	var errResult error
-	errInter := errValue[0].Interface()
+	errInter := retVals[len(retVals)-1].Interface()
 	if errInter != nil {
 		errResult = errInter.(error)
 	}
 
+	var reply reflect.Value
+	if methodSpec.replyType != nil {
+		reply = retVals[0]
+	}
+
 	// Encode the response.
 	if errResult == nil {
-		codecReq.WriteResponse(s.client, reply.Interface())
+		if methodSpec.replyType != nil {
+			codecReq.WriteResponse(s.client, reply.Interface())
+		} else {
+			codecReq.WriteResponse(s.client, nil)
+		}
 	} else {
 		codecReq.WriteError(s.client, errResult)
 	}

@@ -24,27 +24,27 @@ func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
 	return &VolumeChannel{baseChannel{}, device}
 }
 
-func (c *VolumeChannel) Set(message *rpc.Message, state *float64, reply *interface{}) error {
+func (c *VolumeChannel) Set(message *rpc.Message, state *float64) error {
 	return c.device.SetVolume(*state)
 }
 
-func (c *VolumeChannel) VolumeUp(message *rpc.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) VolumeUp(message *rpc.Message) error {
 	return c.device.VolumeUp()
 }
 
-func (c *VolumeChannel) VolumeDown(message *rpc.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) VolumeDown(message *rpc.Message) error {
 	return c.device.VolumeDown()
 }
 
-func (c *VolumeChannel) Mute(message *rpc.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) Mute(message *rpc.Message) error {
 	return c.device.SetMuted(true)
 }
 
-func (c *VolumeChannel) Unmute(message *rpc.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) Unmute(message *rpc.Message) error {
 	return c.device.SetMuted(false)
 }
 
-func (c *VolumeChannel) ToggleMuted(message *rpc.Message, _, reply *interface{}) error {
+func (c *VolumeChannel) ToggleMuted(message *rpc.Message) error {
 	return c.device.ToggleMuted()
 }
 

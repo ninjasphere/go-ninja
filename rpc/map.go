@@ -73,15 +73,15 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 		method := s.rcvrType.Method(i)
 		mtype := method.Type
 
-		if mtype.NumIn() == 1 {
+		// Method must have one or two arguments,
+		if mtype.NumIn() == 1 || mtype.NumIn() > 3 {
 			continue
 		}
 
-		if mtype.NumIn() >= 2 {
-			reqType := mtype.In(1)
-			if reqType != typeOfRequest {
-				continue
-			}
+		// and the first argument must be *rpc.Message
+		reqType := mtype.In(1)
+		if reqType != typeOfRequest {
+			continue
 		}
 
 		// Method must be exported.
@@ -89,46 +89,54 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 			log.Fatalf("RPC Method '%s' must be exported", method.Name)
 			continue
 		}
-		// Method needs four ins: receiver, *rpc.Message, *args, *reply.
-		if mtype.NumIn() != 4 {
-			log2.Fatalf("RPC Method '%s' must have three arguments (*rpc.Message, *args, *reply)", method.Name)
+
+		// If there's a second argument, it must be a pointer and must be exported.
+		var args reflect.Type
+		if mtype.NumIn() == 3 {
+			args = mtype.In(2)
+			if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
+				log2.Fatalf("RPC Method '%s' second argument '%s' must be a pointer and exported", method.Name, args.Name())
+				continue
+			}
+		}
+
+		// Method needs one or two outs
+		if mtype.NumOut() != 1 && mtype.NumOut() != 2 {
+			log2.Fatalf("RPC Method '%s' must have one or two outs", method.Name)
 			continue
 		}
-		// First argument must be a pointer and must be rpc.Message.
-		//reqType := mtype.In(1)
-		//if reqType != typeOfRequest {
-		//	continue
-		//}
-		// Second argument must be a pointer and must be exported.
-		args := mtype.In(2)
-		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
-			log2.Fatalf("RPC Method '%s' second argument '%s' must be a pointer and exported", method.Name, args.Name())
-			continue
+
+		// If there are two outs, the first must be exported
+		var reply reflect.Type
+		if mtype.NumOut() == 2 {
+			// Third argument must be a pointer and must be exported.
+			reply = mtype.Out(0)
+			if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
+				log2.Fatalf("RPC Method '%s' return type '%s' must be a pointer and exported", method.Name, reply.Name())
+				continue
+			}
 		}
-		// Third argument must be a pointer and must be exported.
-		reply := mtype.In(3)
-		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
-			log2.Fatalf("RPC Method '%s' third argument '%s' must be a pointer and exported", method.Name, reply.Name())
-			continue
-		}
-		// Method needs one out: error.
-		if mtype.NumOut() != 1 {
+
+		// The last out needs to be an error
+		if lastReturn := mtype.Out(mtype.NumOut() - 1); lastReturn != typeOfError {
 			log2.Fatalf("RPC Method '%s' must return only an error", method.Name)
 			continue
 		}
-		if returnType := mtype.Out(0); returnType != typeOfError {
-			log2.Fatalf("RPC Method '%s' must return only an error", method.Name)
-			continue
-		}
+
 		s.methods[method.Name] = &serviceMethod{
-			method:    method,
-			argsType:  args.Elem(),
-			replyType: reply.Elem(),
+			method: method,
 		}
+		if reply != nil {
+			s.methods[method.Name].replyType = reply.Elem()
+		}
+		if args != nil {
+			s.methods[method.Name].argsType = args.Elem()
+		}
+
 	}
-	if len(s.methods) == 0 {
+	/*if len(s.methods) == 0 {
 		return nil, fmt.Errorf("rpc: %q has no exported methods of suitable type", s.name)
-	}
+	}*/
 	// Add to the map.
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

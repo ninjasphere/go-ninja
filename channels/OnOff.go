@@ -19,22 +19,22 @@ func NewOnOffChannel(device OnOffDevice) *OnOffChannel {
 	}, device}
 }
 
-func (c *OnOffChannel) TurnOn(message *rpc.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) TurnOn(message *rpc.Message) error {
 	return c.device.SetOnOff(true)
 }
 
-func (c *OnOffChannel) TurnOff(message *rpc.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) TurnOff(message *rpc.Message) error {
 	return c.device.SetOnOff(false)
 }
 
-func (c *OnOffChannel) Toggle(message *rpc.Message, _, reply *interface{}) error {
+func (c *OnOffChannel) Toggle(message *rpc.Message) error {
 	return c.device.ToggleOnOff()
 }
 
-func (c *OnOffChannel) Set(message *rpc.Message, state *bool, reply *interface{}) error {
+func (c *OnOffChannel) Set(message *rpc.Message, state *bool) error {
 	return c.device.SetOnOff(*state)
 }
 
-func (c *OnOffChannel) SendState(on *bool) error {
+func (c *OnOffChannel) SendState(on bool) error {
 	return c.SendEvent("state", on)
 }

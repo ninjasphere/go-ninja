@@ -47,27 +47,27 @@ func NewMediaControlChannel(device MediaControlDevice) *MediaControlChannel {
 	return &MediaControlChannel{baseChannel{}, device}
 }
 
-func (c *MediaControlChannel) Play(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Play(message *rpc.Message) error {
 	return c.device.Play()
 }
 
-func (c *MediaControlChannel) Pause(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Pause(message *rpc.Message) error {
 	return c.device.Pause()
 }
 
-func (c *MediaControlChannel) TogglePlay(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) TogglePlay(message *rpc.Message) error {
 	return c.device.TogglePlay()
 }
 
-func (c *MediaControlChannel) Stop(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Stop(message *rpc.Message) error {
 	return c.device.Stop()
 }
 
-func (c *MediaControlChannel) Next(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Next(message *rpc.Message) error {
 	return c.device.Next()
 }
 
-func (c *MediaControlChannel) Previous(message *rpc.Message, _, reply *interface{}) error {
+func (c *MediaControlChannel) Previous(message *rpc.Message) error {
 	return c.device.Previous()
 }
 

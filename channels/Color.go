@@ -24,6 +24,6 @@ func NewColorChannel(device ColorDevice) *ColorChannel {
 	return &ColorChannel{baseChannel{}, device}
 }
 
-func (c *ColorChannel) Set(message *rpc.Message, state *ColorState, reply *interface{}) error {
+func (c *ColorChannel) Set(message *rpc.Message, state *ColorState) error {
 	return c.device.SetColor(state)
 }

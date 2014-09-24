@@ -12,6 +12,6 @@ func NewMotionChannel(device MotionDevice) *MotionChannel {
 	return &MotionChannel{baseChannel{}, device}
 }
 
-func (c *MotionChannel) SendState() error {
+func (c *MotionChannel) SendMotion() error {
 	return c.SendEvent("state", true)
 }

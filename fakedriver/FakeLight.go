@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
@@ -57,13 +58,17 @@ func (l *FakeLight) SetEventHandler(sendEvent func(event string, payload interfa
 var reg, _ = regexp.Compile("[^a-z0-9]")
 
 // Exported by service/device schema
-func (l *FakeLight) SetName(message *rpc.Message, name *string, result *string) error {
+func (l *FakeLight) SetName(message *rpc.Message, name *string) (*string, error) {
 	log.Printf("Setting device name to %s", *name)
 
-	safe := reg.ReplaceAllString(*name, "")
-	result = &safe
+	safe := reg.ReplaceAllString(strings.ToLower(*name), "")
+	if len(safe) > 5 {
+		safe = safe[0:5]
+	}
 
 	log.Printf("Pretending we can only set 5 lowercase alphanum. Name now: %s", safe)
 
-	return nil
+	l.sendEvent("renamed", safe)
+
+	return &safe, nil
 }
