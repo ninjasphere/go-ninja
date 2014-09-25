@@ -21,7 +21,9 @@ type ColorChannel struct {
 }
 
 func NewColorChannel(device ColorDevice) *ColorChannel {
-	return &ColorChannel{baseChannel{}, device}
+	return &ColorChannel{baseChannel{
+		protocol: "color",
+	}, device}
 }
 
 func (c *ColorChannel) Set(message *rpc.Message, state *ColorState) error {

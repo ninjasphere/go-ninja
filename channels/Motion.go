@@ -9,7 +9,9 @@ type MotionChannel struct {
 }
 
 func NewMotionChannel(device MotionDevice) *MotionChannel {
-	return &MotionChannel{baseChannel{}, device}
+	return &MotionChannel{baseChannel{
+		protocol: "motion",
+	}, device}
 }
 
 func (c *MotionChannel) SendMotion() error {

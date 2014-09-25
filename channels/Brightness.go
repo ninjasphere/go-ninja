@@ -12,7 +12,9 @@ type BrightnessChannel struct {
 }
 
 func NewBrightnessChannel(device BrightnessDevice) *BrightnessChannel {
-	return &BrightnessChannel{baseChannel{}, device}
+	return &BrightnessChannel{baseChannel{
+		protocol: "brightness",
+	}, device}
 }
 
 func (c *BrightnessChannel) Set(message *rpc.Message, state *float64) error {

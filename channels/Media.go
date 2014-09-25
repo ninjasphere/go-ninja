@@ -83,7 +83,9 @@ type MediaItemAlbum struct {
 }
 
 func NewMediaChannel(device MediaDevice) *MediaChannel {
-	return &MediaChannel{baseChannel{}, device}
+	return &MediaChannel{baseChannel{
+		protocol: "media",
+	}, device}
 }
 
 func (c *MediaChannel) PlayUrl(message *rpc.Message, url *string) error {

@@ -21,7 +21,9 @@ type VolumeChannel struct {
 }
 
 func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
-	return &VolumeChannel{baseChannel{}, device}
+	return &VolumeChannel{baseChannel{
+		protocol: "volume",
+	}, device}
 }
 
 func (c *VolumeChannel) Set(message *rpc.Message, state *float64) error {

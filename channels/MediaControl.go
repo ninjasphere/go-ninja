@@ -44,7 +44,9 @@ type MediaControlChannel struct {
 }
 
 func NewMediaControlChannel(device MediaControlDevice) *MediaControlChannel {
-	return &MediaControlChannel{baseChannel{}, device}
+	return &MediaControlChannel{baseChannel{
+		protocol: "media-control",
+	}, device}
 }
 
 func (c *MediaControlChannel) Play(message *rpc.Message) error {
