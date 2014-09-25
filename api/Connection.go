@@ -70,6 +70,42 @@ func Connect(clientID string) (*Connection, error) {
 	return &conn, nil
 }
 
+func (c *Connection) GetMqttClient() *mqtt.MqttClient {
+	return c.mqtt
+}
+
+func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message, values map[string]string) bool) error {
+
+	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
+	if err != nil {
+		c.log.FatalError(err, "Failed to subscribe to "+topic)
+	}
+
+	finished := false
+
+	receipt, err := c.mqtt.StartSubscription(func(_ *mqtt.MqttClient, message mqtt.Message) {
+		if finished {
+			return
+		}
+		values, ok := MatchTopicPattern(topic, message.Topic())
+		if !ok {
+			c.log.Warningf("Failed to read params from topic: %s using template: %s", message.Topic(), topic)
+		} else {
+			keepGoing := callback(message, *values)
+			if !keepGoing {
+				finished = true
+			}
+		}
+	}, filter)
+
+	if err != nil {
+		return err
+	}
+
+	<-receipt
+	return nil
+}
+
 // ExportDriver Exports a driver using the 'driver' protocol, and announces it
 func (c *Connection) ExportDriver(driver Driver) error {
 	topic := fmt.Sprintf("$node/%s/driver/%s", config.Serial(), driver.GetModuleInfo().ID)
@@ -115,6 +151,10 @@ func (c *Connection) ExportChannel(device Device, channel Channel, id string) er
 }
 
 func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, id string, supportedMethods *[]string, supportedEvents *[]string) error {
+	if channel.GetProtocol() == "" {
+		return fmt.Errorf("The channel must have a protocol. Channel ID: %s", id)
+	}
+
 	announcement := &model.Channel{
 		ID:       id,
 		Protocol: channel.GetProtocol(),
