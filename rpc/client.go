@@ -6,10 +6,13 @@
 package rpc
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -38,46 +41,40 @@ type Call struct {
 // with a single Client, and a Client may be used by
 // multiple goroutines simultaneously.
 type Client struct {
-	mutex   sync.Mutex // protects following
-	codec   ClientCodec
-	mqtt    *mqtt.MqttClient
-	pending map[uint32]*Call
+	mutex      sync.Mutex // protects following
+	codec      ClientCodec
+	mqtt       *mqtt.MqttClient
+	pending    map[uint32]*Call
+	subscribed map[string]bool
 }
 
 // NewClient creates a new rpc client using the provided MQTT connection
 func NewClient(mqtt *mqtt.MqttClient, codec ClientCodec) *Client {
 	client := &Client{
-		pending: make(map[uint32]*Call),
-		mqtt:    mqtt,
-		codec:   codec,
+		pending:    make(map[uint32]*Call),
+		subscribed: make(map[string]bool),
+		mqtt:       mqtt,
+		codec:      codec,
 	}
 	return client
 }
 
-func (client *Client) send(call *Call) (*Call, error) {
-
-	// Register this call, if we are expecting a reply
-	if call.Done != nil {
-		call.ID = rand.Uint32()
-	}
+func (client *Client) send(call *Call) error {
 
 	payload, err := client.codec.EncodeClientRequest(call)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	log.Debugf("< Outgoing to %s : %s", call.Topic, payload)
+	replyTopic := call.Topic + "/reply"
 
-	pubReceipt := client.mqtt.Publish(mqtt.QoS(0), call.Topic, payload)
+	if !client.subscribed[replyTopic] {
 
-	<-pubReceipt
+		log.Debugf("Subscribing to %s", replyTopic)
 
-	if call.Done != nil {
-		client.pending[call.ID] = call
-
-		filter, err := mqtt.NewTopicFilter(call.Topic+"/reply", 0)
+		filter, err := mqtt.NewTopicFilter(replyTopic, 0)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
@@ -86,17 +83,29 @@ func (client *Client) send(call *Call) (*Call, error) {
 		}, filter)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
+
+		client.subscribed[replyTopic] = true
 
 		<-receipt
 	}
 
-	return call, nil
+	log.Debugf("< Outgoing to %s : %s", call.Topic, payload)
+
+	pubReceipt := client.mqtt.Publish(mqtt.QoS(0), call.Topic, payload)
+
+	<-pubReceipt
+
+	client.pending[call.ID] = call
+
+	return nil
 }
 
 func (client *Client) handleResponse(message mqtt.Message) {
 	id, err := client.codec.DecodeIdAndError(message.Payload())
+
+	spew.Dump("Got", id, err)
 
 	if id == nil {
 		log.Debugf("Failed to decode reply: %s error: %s", message.Payload(), err)
@@ -123,7 +132,10 @@ func (client *Client) handleResponse(message mqtt.Message) {
 		return
 	}
 
-	call.Error = client.codec.DecodeClientResponse(message.Payload(), call.Reply)
+	if call.Reply != nil {
+		call.Error = client.codec.DecodeClientResponse(message.Payload(), call.Reply)
+	}
+
 	call.done()
 }
 
@@ -138,19 +150,28 @@ func (call *Call) done() {
 
 }
 
-// Call invokes the function asynchronously.  It returns the Call structure representing
-// the invocation.  If reply is nil, no reply is expected.
-func (client *Client) Call(topic string, serviceMethod string, args interface{}, reply interface{}) (*Call, error) {
-	call := new(Call)
-	call.Topic = topic
-	call.ServiceMethod = serviceMethod
-	call.Args = args
-
-	if reply == nil {
-		// No reply is expected
-	} else {
-		call.Done = make(chan *Call, 1)
-		call.Reply = reply
+// CallWithTimeout invokes the function asynchronously.
+func (client *Client) CallWithTimeout(topic string, serviceMethod string, args interface{}, reply interface{}, timeout time.Duration) error {
+	call := &Call{
+		ID:            rand.Uint32(),
+		Topic:         topic,
+		ServiceMethod: serviceMethod,
+		Args:          args,
+		Done:          make(chan *Call, 1),
+		Reply:         reply,
 	}
-	return client.send(call)
+
+	err := client.send(call)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case <-call.Done:
+		return nil
+	case <-time.After(timeout):
+		delete(client.pending, call.ID)
+		return fmt.Errorf("Call to service %s - (method: %s) timed out after %d seconds", topic, serviceMethod, timeout/time.Second)
+	}
+
 }

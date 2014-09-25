@@ -106,6 +106,10 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 	return nil
 }
 
+func (c *Connection) GetServiceClient(topic string) *ServiceClient {
+	return &ServiceClient{c, topic}
+}
+
 // ExportDriver Exports a driver using the 'driver' protocol, and announces it
 func (c *Connection) ExportDriver(driver Driver) error {
 	topic := fmt.Sprintf("$node/%s/driver/%s", config.Serial(), driver.GetModuleInfo().ID)
