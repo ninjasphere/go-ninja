@@ -79,7 +79,7 @@ func (client *Client) send(call *Call) error {
 
 		receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
 			log.Debugf("< Incoming to %s : %s", call.Topic, message.Payload())
-			client.handleResponse(message)
+			go client.handleResponse(message)
 		}, filter)
 
 		if err != nil {
@@ -165,6 +165,8 @@ func (client *Client) CallWithTimeout(topic string, serviceMethod string, args i
 	if err != nil {
 		return err
 	}
+
+	log.Infof("Waiting for reply...")
 
 	select {
 	case <-call.Done:

@@ -91,7 +91,7 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (service *E
 	}
 
 	receipt, err := s.client.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
-		s.serveRequest(topic, message)
+		go s.serveRequest(topic, message)
 	}, filter)
 
 	if err != nil {
