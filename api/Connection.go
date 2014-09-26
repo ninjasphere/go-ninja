@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"strings"
+	"sync"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
@@ -82,19 +83,28 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 	}
 
 	finished := false
+	mutex := &sync.Mutex{}
 
 	receipt, err := c.mqtt.StartSubscription(func(_ *mqtt.MqttClient, message mqtt.Message) {
+		mutex.Lock()
+
 		if finished {
 			return
 		}
+
 		values, ok := MatchTopicPattern(topic, message.Topic())
 		if !ok {
 			c.log.Warningf("Failed to read params from topic: %s using template: %s", message.Topic(), topic)
+			mutex.Unlock()
 		} else {
-			keepGoing := callback(message, *values)
-			if !keepGoing {
-				finished = true
-			}
+
+			go func() {
+				if !callback(message, *values) {
+					finished = true
+				}
+				mutex.Unlock()
+			}()
+
 		}
 	}, filter)
 
