@@ -77,10 +77,10 @@ func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 //    - The receiver is exported (begins with an upper case letter) or local
 //      (defined in the package registering the service).
 //    - The method name is exported.
-//    - The method has three arguments: *mqtt.Message, *args, *reply.
-//    - All three arguments are pointers.
-//    - The second and third arguments are exported or local.
-//    - The method has return type error.
+//    - The method's first argument is *mqtt.Message
+//    - If there is a second argument (the RPC params value) it must be exported and a pointer
+//    - If there is a return value, it must be first, exported and a pointer
+//    - The method's last return value is an error
 //
 // All other methods are ignored.
 func (s *Server) RegisterService(receiver interface{}, topic string) (service *ExportedService, err error) {
