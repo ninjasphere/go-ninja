@@ -1,6 +1,7 @@
 package ninja
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -77,9 +78,13 @@ func (c *Connection) GetMqttClient() *mqtt.MqttClient {
 	return c.mqtt
 }
 
+type rpcMessage struct {
+	Params *json.RawMessage `json:"params"`
+}
+
 // Subscribe allows you to subscribe to an MQTT topic. Topics can contain variables of the form ":myvar" which will
 // be returned in the values map in the callback. The callback must return "true" if it wants to receive more messages.
-func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message, values map[string]string) bool) error {
+func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessage, values map[string]string) bool) error {
 
 	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
 	if err != nil {
@@ -105,9 +110,25 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 			mutex.Unlock()
 		} else {
 
+			msg := &rpcMessage{}
+			err := json.Unmarshal(message.Payload(), msg)
+
+			if err != nil {
+				c.log.Warningf("Failed to read parameters in rpc call to %s", message.Topic())
+				return
+			}
+
+			var params json.RawMessage
+
+			json2.ReadRPCParams(msg.Params, &params)
+			if err != nil {
+				c.log.Warningf("Failed to read parameters in rpc call to %s", message.Topic())
+				return
+			}
+
 			// The callback needs to be run in a goroutine as blocking this thread prevents any other messages arriving
 			go func() {
-				if !callback(message, *values) {
+				if !callback(&params, *values) {
 					// The callback has returned false, indicating that it does not want to receive any more messages.
 					finished = true
 				}

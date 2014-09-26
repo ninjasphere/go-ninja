@@ -65,12 +65,6 @@ func NewFakeDriver() (*FakeDriver, error) {
 func (d *FakeDriver) Start(message *rpc.Message, config *FakeDriverConfig) error {
 	log.Printf("Fake Driver Starting with config %v", config)
 
-	if config == nil {
-		config = defaultConfig()
-
-		d.sendEvent("config", config)
-	}
-
 	d.config = config
 
 	for i := 0; i < d.config.NumberOfDevices; i++ {
@@ -87,6 +81,10 @@ func (d *FakeDriver) Start(message *rpc.Message, config *FakeDriverConfig) error
 			log.Fatalf("Failed to export fake light on off channel %d: %s", i, err)
 		}
 	}
+
+	// Bump the config prop by one... to test it updates
+	config.NumberOfDevices++
+	d.sendEvent("config", config)
 
 	return nil
 }

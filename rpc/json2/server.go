@@ -172,37 +172,8 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 	if c.err == nil {
 		if c.request.Params != nil {
 
-			// Ninja: If we get an array in, try to pass its contents as one argument
-			paramsString := string(*c.request.Params)
-			if paramsString == "[]" {
-				c.request.Params = nil
-			} else if strings.HasPrefix(paramsString, "[") {
-				rawParams := &json.RawMessage{}
-				err := json.Unmarshal([]byte(paramsString[1:len(paramsString)-1]), rawParams)
+			c.err = ReadRPCParams(c.request.Params, args)
 
-				if err != nil {
-					c.err = &Error{
-						Code:    E_INVALID_REQ,
-						Message: "Ninja's golang rpc only accepts one param in an array. Use named params instead.",
-						Data:    c.request.Params,
-					}
-				} else {
-					c.request.Params = rawParams
-				}
-
-			}
-
-			if c.err == nil && c.request.Params != nil {
-				// JSON params structured object. Unmarshal to the args object.
-				err := json.Unmarshal(*c.request.Params, args)
-				if err != nil {
-					c.err = &Error{
-						Code:    E_INVALID_REQ,
-						Message: err.Error(),
-						Data:    c.request.Params,
-					}
-				}
-			}
 		} else {
 			// Ninja allows a null params field. Should work out how to check missing vs. null.
 			// Then again. Fuck it. Yolo.
@@ -213,6 +184,45 @@ func (c *CodecRequest) ReadRequest(args interface{}) error {
 		}
 	}
 	return c.err
+}
+
+func ReadRPCParams(params *json.RawMessage, args interface{}) error {
+
+	var err error
+
+	// Ninja: If we get an array in, try to pass its contents as one argument
+	paramsString := string(*params)
+	if paramsString == "[]" {
+		params = nil
+	} else if strings.HasPrefix(paramsString, "[") {
+		rawParams := &json.RawMessage{}
+		err := json.Unmarshal([]byte(paramsString[1:len(paramsString)-1]), rawParams)
+
+		if err != nil {
+			err = &Error{
+				Code:    E_INVALID_REQ,
+				Message: "Ninja's golang rpc only accepts one param in an array. Use named params instead.",
+				Data:    params,
+			}
+		} else {
+			params = rawParams
+		}
+
+	}
+
+	if err == nil && params != nil {
+		// JSON params structured object. Unmarshal to the args object.
+		err = json.Unmarshal(*params, args)
+		if err != nil {
+			err = &Error{
+				Code:    E_INVALID_REQ,
+				Message: err.Error(),
+				Data:    params,
+			}
+		}
+	}
+
+	return err
 }
 
 // WriteResponse encodes the response and writes it to the reply topic

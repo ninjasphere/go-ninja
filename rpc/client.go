@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -78,7 +77,7 @@ func (client *Client) send(call *Call) error {
 		}
 
 		receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
-			log.Debugf("< Incoming to %s : %s", call.Topic, message.Payload())
+			log.Debugf("< Incoming to %s : %s", message.Topic(), message.Payload())
 			go client.handleResponse(message)
 		}, filter)
 
@@ -104,8 +103,6 @@ func (client *Client) send(call *Call) error {
 
 func (client *Client) handleResponse(message mqtt.Message) {
 	id, err := client.codec.DecodeIdAndError(message.Payload())
-
-	spew.Dump("Got", id, err)
 
 	if id == nil {
 		log.Debugf("Failed to decode reply: %s error: %s", message.Payload(), err)
@@ -170,7 +167,7 @@ func (client *Client) CallWithTimeout(topic string, serviceMethod string, args i
 
 	select {
 	case <-call.Done:
-		return nil
+		return call.Error
 	case <-time.After(timeout):
 		delete(client.pending, call.ID)
 		return fmt.Errorf("Call to service %s - (method: %s) timed out after %d seconds", topic, serviceMethod, timeout/time.Second)
