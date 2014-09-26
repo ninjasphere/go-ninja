@@ -16,7 +16,8 @@ import (
 	"github.com/ninjasphere/go-ninja/rpc/json2"
 )
 
-// Connection Connects to the mqtt broker.
+// Connection Holds the connection to the Ninja MQTT bus, and provides all the methods needed to communicate with
+// the other modules in Sphere.
 type Connection struct {
 	mqtt      *mqtt.MqttClient
 	log       *logger.Logger
@@ -71,10 +72,13 @@ func Connect(clientID string) (*Connection, error) {
 	return &conn, nil
 }
 
+// GetMqttClient will be removed in a later version. All communication should happen via methods on Connection
 func (c *Connection) GetMqttClient() *mqtt.MqttClient {
 	return c.mqtt
 }
 
+// Subscribe allows you to subscribe to an MQTT topic. Topics can contain variables of the form ":myvar" which will
+// be returned in the values map in the callback. The callback must return "true" if it wants to receive more messages.
 func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message, values map[string]string) bool) error {
 
 	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
@@ -86,8 +90,11 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 	mutex := &sync.Mutex{}
 
 	receipt, err := c.mqtt.StartSubscription(func(_ *mqtt.MqttClient, message mqtt.Message) {
+		// We lock so that the callback has a chance to return false,
+		// to prevent any more messages arriving on this subscription
 		mutex.Lock()
 
+		// TODO: Implement unsubscribing. For now, it will just skip over any subscriptions that have finished
 		if finished {
 			return
 		}
@@ -98,8 +105,10 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 			mutex.Unlock()
 		} else {
 
+			// The callback needs to be run in a goroutine as blocking this thread prevents any other messages arriving
 			go func() {
 				if !callback(message, *values) {
+					// The callback has returned false, indicating that it does not want to receive any more messages.
 					finished = true
 				}
 				mutex.Unlock()
@@ -116,8 +125,9 @@ func (c *Connection) Subscribe(topic string, callback func(message mqtt.Message,
 	return nil
 }
 
-func (c *Connection) GetServiceClient(topic string) *ServiceClient {
-	return &ServiceClient{c, topic}
+// GetServiceClient returns an RPC client for the given service.
+func (c *Connection) GetServiceClient(serviceTopic string) *ServiceClient {
+	return &ServiceClient{c, serviceTopic}
 }
 
 // ExportDriver Exports a driver using the 'driver' protocol, and announces it
@@ -164,6 +174,8 @@ func (c *Connection) ExportChannel(device Device, channel Channel, id string) er
 	return c.ExportChannelWithSupported(device, channel, id, nil, nil)
 }
 
+// ExportChannelWithSupported is the same as ExportChannel, but any methods provided must actually be exported by the
+// channel, or an error is returned
 func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, id string, supportedMethods *[]string, supportedEvents *[]string) error {
 	if channel.GetProtocol() == "" {
 		return fmt.Errorf("The channel must have a protocol. Channel ID: %s", id)
@@ -178,7 +190,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().GUID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema:           resolveProtocolUri(channel.GetProtocol()),
+		Schema:           resolveProtocolURI(channel.GetProtocol()),
 		SupportedMethods: supportedMethods,
 		SupportedEvents:  supportedEvents,
 	}
@@ -241,6 +253,7 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 	return exportedService, nil
 }
 
+// SendNotification Sends a simple json-rpc notification to a topic
 func (c *Connection) SendNotification(topic string, params ...interface{}) error {
 	return c.rpcServer.SendNotification(topic, params...)
 }
@@ -253,7 +266,7 @@ func resolveSchemaURI(uri string) string {
 	return resolveSchemaURIWithBase(rootSchemaURL, uri)
 }
 
-func resolveProtocolUri(uri string) string {
+func resolveProtocolURI(uri string) string {
 	return resolveSchemaURIWithBase(protocolSchemaURL, uri)
 }
 
