@@ -7,11 +7,13 @@
 package rpc
 
 import (
+	"fmt"
 	"reflect"
 	"unicode"
 	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/ninjasphere/go-ninja/schemas"
 )
 
 // ----------------------------------------------------------------------------
@@ -61,9 +63,33 @@ type ExportedService struct {
 	Methods []string
 	topic   string
 	server  *Server
+	schema  string
 }
 
 func (s *ExportedService) SendEvent(event string, payload interface{}) error {
+
+	schema := s.schema + "#/events/" + event + "/value"
+	message, err := schemas.Validate(schema, payload)
+
+	if err != nil {
+		return err
+	}
+
+	if message != nil && event == "announce" {
+		// Assume this is a channel announcement (which doesn't actually define the announce event in every protocol)
+
+		schema = "http://schema.ninjablocks.com/model/channel#"
+		message, err = schemas.Validate(schema, payload)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if message != nil {
+		return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
+	}
+
 	return s.server.SendNotification(s.topic+"/event/"+event, payload)
 }
 
@@ -83,7 +109,7 @@ func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 //    - The method's last return value is an error
 //
 // All other methods are ignored.
-func (s *Server) RegisterService(receiver interface{}, topic string) (service *ExportedService, err error) {
+func (s *Server) RegisterService(receiver interface{}, topic string, schema string) (service *ExportedService, err error) {
 
 	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
@@ -108,7 +134,7 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (service *E
 		exportedMethodsLower = append(exportedMethodsLower, lowerFirst(m))
 	}
 
-	return &ExportedService{Methods: exportedMethodsLower, topic: topic, server: s}, err
+	return &ExportedService{Methods: exportedMethodsLower, topic: topic, server: s, schema: schema}, err
 }
 
 func lowerFirst(s string) string {

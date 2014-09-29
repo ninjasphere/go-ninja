@@ -259,7 +259,7 @@ type serviceAnnouncement interface {
 // exportService Exports an RPC service, and announces it over TOPIC/event/announce
 func (c *Connection) exportService(service interface{}, topic string, announcement serviceAnnouncement) (*rpc.ExportedService, error) {
 
-	exportedService, err := c.rpcServer.RegisterService(service, topic)
+	exportedService, err := c.rpcServer.RegisterService(service, topic, announcement.GetServiceAnnouncement().Schema)
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to register service on %s : %s", topic, err)
