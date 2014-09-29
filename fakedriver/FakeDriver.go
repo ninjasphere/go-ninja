@@ -84,9 +84,8 @@ func (d *FakeDriver) Start(message *rpc.Message, config *FakeDriverConfig) error
 
 	// Bump the config prop by one... to test it updates
 	config.NumberOfDevices++
-	d.sendEvent("config", config)
 
-	return nil
+	return d.sendEvent("config", config)
 }
 
 func (d *FakeDriver) Stop(message *rpc.Message) error {

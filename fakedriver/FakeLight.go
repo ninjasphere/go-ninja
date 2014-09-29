@@ -23,8 +23,8 @@ func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
 	light := &FakeLight{
 		driver: driver,
 		info: &model.Device{
-			ID:     fmt.Sprintf("light%d", id),
-			IDType: "fake",
+			NaturalID:     fmt.Sprintf("light%d", id),
+			NaturalIDType: "fake",
 		},
 	}
 
