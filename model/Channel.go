@@ -2,9 +2,9 @@ package model
 
 type Channel struct {
 	ServiceAnnouncement
-	ID       string  `json:"id"`
-	Protocol string  `json:"protocol"`
-	Device   *Device `json:"device"`
+	ID       string  `json:"id" redis:"id"`
+	Protocol string  `json:"protocol" redis:"protocol"`
+	Device   *Device `json:"device" redis:"-"`
 }
 
 func (c *Channel) GetServiceAnnouncement() *ServiceAnnouncement {
