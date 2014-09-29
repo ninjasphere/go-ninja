@@ -279,6 +279,8 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 		announcement.GetServiceAnnouncement().SupportedEvents = &events
 	}
 
+	announcement.GetServiceAnnouncement().Topic = topic
+
 	// send out service announcement
 	err = exportedService.SendEvent("announce", announcement)
 	if err != nil {
