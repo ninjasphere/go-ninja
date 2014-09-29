@@ -8,7 +8,7 @@ import (
 	"github.com/bitly/go-simplejson"
 )
 
-var cfg = mustLoadConfig()
+var cfg *simplejson.Json
 
 // MustString returns the string property at the path
 func MustString(path ...string) string {
@@ -41,7 +41,7 @@ func Serial() string {
 }
 
 // MustLoadConfig parses the output of "sphere-config"
-func mustLoadConfig() *simplejson.Json {
+func init() {
 	cmd := exec.Command("sphere-config")
 
 	var out bytes.Buffer
@@ -52,9 +52,9 @@ func mustLoadConfig() *simplejson.Json {
 		log.Fatalf("Failed to load configuration. ('sphere-config' must be in the PATH) error:%s", err)
 	}
 
-	cfg, err := simplejson.NewJson(out.Bytes())
+	cfg, err = simplejson.NewJson(out.Bytes())
 	if err != nil {
 		log.Fatalf("Failed to parse configuration. error:%s", err)
 	}
-	return cfg
+
 }
