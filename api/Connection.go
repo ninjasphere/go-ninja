@@ -297,5 +297,5 @@ func resolveSchemaURIWithBase(base *url.URL, uri string) string {
 	if err != nil {
 		log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
 	}
-	return rootSchemaURL.ResolveReference(u).String()
+	return base.ResolveReference(u).String()
 }
