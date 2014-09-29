@@ -173,9 +173,9 @@ func (c *Connection) ExportDriver(driver Driver) error {
 // ExportDevice Exports a device using the 'device' protocol, and announces it
 func (c *Connection) ExportDevice(device Device) error {
 	announcement := device.GetDeviceInfo()
-	announcement.GUID = getGUID(device.GetDeviceInfo().IDType, device.GetDeviceInfo().ID)
+	announcement.ID = getGUID(device.GetDeviceInfo().NaturalIDType, device.GetDeviceInfo().NaturalID)
 
-	topic := fmt.Sprintf("$device/%s", announcement.GUID)
+	topic := fmt.Sprintf("$device/%s", announcement.ID)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
 		Schema: "http://schema.ninjablocks.com/service/device",
@@ -208,7 +208,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 		Device:   device.GetDeviceInfo(),
 	}
 
-	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().GUID, id)
+	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().ID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
 		Schema:           resolveProtocolURI(channel.GetProtocol()),
@@ -226,7 +226,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	properAnnouncement := announcement.ServiceAnnouncement
 
 	shortProtocol := strings.TrimPrefix(resolveProtocolURI(channel.GetProtocol()), protocolSchemaURL.String())
-	oldTopic := fmt.Sprintf("$device/%s/channel/%s/%s", device.GetDeviceInfo().GUID, id, shortProtocol)
+	oldTopic := fmt.Sprintf("$device/%s/channel/%s/%s", device.GetDeviceInfo().ID, id, shortProtocol)
 
 	deprecated := true
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
@@ -302,7 +302,7 @@ func (c *Connection) SendNotification(topic string, params ...interface{}) error
 	return c.rpcServer.SendNotification(topic, params...)
 }
 
-// Pull this out into the scham validation pakage when we have one
+// Pull this out into the schema validation package when we have one
 var rootSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com")
 var protocolSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com/protocol/")
 
