@@ -1,7 +1,5 @@
 package channels
 
-import "github.com/ninjasphere/go-ninja/rpc"
-
 type VolumeDevice interface {
 	SetVolume(volume float64) error
 	VolumeUp() error
@@ -26,27 +24,27 @@ func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
 	}, device}
 }
 
-func (c *VolumeChannel) Set(message *rpc.Message, state *float64) error {
+func (c *VolumeChannel) Set(state *float64) error {
 	return c.device.SetVolume(*state)
 }
 
-func (c *VolumeChannel) VolumeUp(message *rpc.Message) error {
+func (c *VolumeChannel) VolumeUp() error {
 	return c.device.VolumeUp()
 }
 
-func (c *VolumeChannel) VolumeDown(message *rpc.Message) error {
+func (c *VolumeChannel) VolumeDown() error {
 	return c.device.VolumeDown()
 }
 
-func (c *VolumeChannel) Mute(message *rpc.Message) error {
+func (c *VolumeChannel) Mute() error {
 	return c.device.SetMuted(true)
 }
 
-func (c *VolumeChannel) Unmute(message *rpc.Message) error {
+func (c *VolumeChannel) Unmute() error {
 	return c.device.SetMuted(false)
 }
 
-func (c *VolumeChannel) ToggleMuted(message *rpc.Message) error {
+func (c *VolumeChannel) ToggleMuted() error {
 	return c.device.ToggleMuted()
 }
 

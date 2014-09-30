@@ -1,7 +1,5 @@
 package channels
 
-import "github.com/ninjasphere/go-ninja/rpc"
-
 type BrightnessDevice interface {
 	SetBrightness(state float64) error
 }
@@ -17,7 +15,11 @@ func NewBrightnessChannel(device BrightnessDevice) *BrightnessChannel {
 	}, device}
 }
 
-func (c *BrightnessChannel) Set(message *rpc.Message, state *float64) error {
-	c.device.SetBrightness(*state)
+func (c *BrightnessChannel) Set(state float64) error {
+	c.device.SetBrightness(state)
 	return nil
+}
+
+func (c *BrightnessChannel) SendState(state float64) error {
+	return c.SendEvent("state", state)
 }

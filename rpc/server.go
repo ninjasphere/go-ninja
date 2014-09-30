@@ -126,7 +126,12 @@ func (s *Server) RegisterService(receiver interface{}, topic string, schema stri
 
 	<-receipt
 
-	exportedMethods, err := s.services.register(receiver, topic)
+	methods, err := schemas.GetServiceMethods(schema)
+	if err != nil {
+		return nil, err
+	}
+
+	exportedMethods, err := s.services.register(receiver, topic, methods)
 
 	var exportedMethodsLower []string
 
@@ -189,23 +194,40 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		return
 	}
 	// Decode the args.
-	args := reflect.New(methodSpec.argsType)
-	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
-		codecReq.WriteError(s.client, errRead)
-		return
+	var args reflect.Value
+	if methodSpec.argsType != nil {
+		if methodSpec.argsType.Kind() == reflect.Ptr {
+			args = reflect.New(methodSpec.argsType.Elem())
+		} else {
+			log.Infof("We don't want a pointer")
+			args = reflect.New(methodSpec.argsType)
+		}
+
+		if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
+			codecReq.WriteError(s.client, errRead)
+			return
+		}
+
 	}
 	// Call the service method.
 
 	params := []reflect.Value{
 		serviceSpec.rcvr,
+	}
+
+	/*
+		TODO: Allow the method to request an rpc.Message
 		reflect.ValueOf(&Message{
 			Payload: message.Payload(),
 			Topic:   topic,
-		}),
-	}
+		}),*/
 
 	if methodSpec.argsType != nil {
-		params = append(params, args)
+		if methodSpec.argsType.Kind() == reflect.Ptr {
+			params = append(params, args)
+		} else {
+			params = append(params, args.Elem())
+		}
 	}
 
 	/*var reply reflect.Value

@@ -48,8 +48,18 @@ type serviceMap struct {
 	services map[string]*service
 }
 
+type rpcService interface {
+	GetRPCMethods() []string
+}
+
 // register adds a new service using reflection to extract its methods.
-func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, err error) {
+func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods []string) (methods []string, err error) {
+
+	/*var providedMethods *[]string
+	switch rcvr := rcvr.(type) {
+	case rpcService:
+		providedMethods = rcvr.GetRPCMethods()
+	}*/
 
 	// Setup service.
 	s := &service{
@@ -61,11 +71,11 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 	if name == "" {
 		s.name = reflect.Indirect(s.rcvr).Type().Name()
 		if !isExported(s.name) {
-			return nil, fmt.Errorf("rpc: type %q is not exported", s.name)
+			log.Fatalf("rpc: type %q is not exported", s.name)
 		}
 	}
 	if s.name == "" {
-		return nil, fmt.Errorf("rpc: no service name for type %q", s.rcvrType.String())
+		log.Fatalf("rpc: no service name for type %q", s.rcvrType.String())
 	}
 	// Setup methods.
 	for i := 0; i < s.rcvrType.NumMethod(); i++ {
@@ -73,14 +83,19 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 		method := s.rcvrType.Method(i)
 		mtype := method.Type
 
-		// Method must have one or two arguments,
-		if mtype.NumIn() == 1 || mtype.NumIn() > 3 {
+		//log.Infof("Method: %s", method.Name)
+
+		// Method must be in the list of exportable methods
+		if !isValueInList(lowerFirst(method.Name), exportableMethods) {
+			//log.Infof("Not exportable: %s", method.Name)
+
 			continue
 		}
 
-		// and the first argument must be *rpc.Message
-		reqType := mtype.In(1)
-		if reqType != typeOfRequest {
+		// Method must have no or one arguments
+		if mtype.NumIn() > 2 {
+			//log.Infof("Wrong number: %s", method.Name)
+
 			continue
 		}
 
@@ -90,12 +105,12 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 			continue
 		}
 
-		// If there's a second argument, it must be a pointer and must be exported.
+		// The one argument (args) must be a pointer and must be exported, if its there
 		var args reflect.Type
-		if mtype.NumIn() == 3 {
-			args = mtype.In(2)
-			if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
-				log2.Fatalf("RPC Method '%s' second argument '%s' must be a pointer and exported", method.Name, args.Name())
+		if mtype.NumIn() == 2 {
+			args = mtype.In(1)
+			if !isExportedOrBuiltin(args) {
+				log2.Fatalf("RPC Method %s.%s arguments must be exported", name, method.Name)
 				continue
 			}
 		}
@@ -130,7 +145,7 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 			s.methods[method.Name].replyType = reply.Elem()
 		}
 		if args != nil {
-			s.methods[method.Name].argsType = args.Elem()
+			s.methods[method.Name].argsType = args
 		}
 
 	}
@@ -187,4 +202,13 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 	// PkgPath will be non-empty even for an exported type,
 	// so we need to check the type name as well.
 	return isExported(t.Name()) || t.PkgPath() == ""
+}
+
+func isValueInList(value string, list []string) bool {
+	for _, v := range list {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }

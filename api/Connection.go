@@ -253,6 +253,28 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	return nil
 }
 
+type simpleService struct {
+	model.ServiceAnnouncement
+}
+
+func (s *simpleService) GetServiceAnnouncement() *model.ServiceAnnouncement {
+	return &s.ServiceAnnouncement
+}
+
+// MustExportService Exports an RPC service, and announces it over TOPIC/event/announce. Must not cause an error or will panic.
+func (c *Connection) MustExportService(service interface{}, topic string, announcement *model.ServiceAnnouncement) *rpc.ExportedService {
+	exported, err := c.exportService(service, topic, &simpleService{*announcement})
+	if err != nil {
+		log.Fatalf("Failed to export service on topic '%s': %s", topic, err)
+	}
+	return exported
+}
+
+// ExportService Exports an RPC service, and announces it over TOPIC/event/announce
+func (c *Connection) ExportService(service interface{}, topic string, announcement *model.ServiceAnnouncement) (*rpc.ExportedService, error) {
+	return c.exportService(service, topic, &simpleService{*announcement})
+}
+
 type eventingService interface {
 	SetEventHandler(func(event string, payload interface{}) error)
 }
@@ -310,8 +332,8 @@ func (c *Connection) SendNotification(topic string, params ...interface{}) error
 }
 
 // Pull this out into the schema validation package when we have one
-var rootSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com")
-var protocolSchemaURL, _ = url.Parse("http://schemas.ninjablocks.com/protocol/")
+var rootSchemaURL, _ = url.Parse("http://schema.ninjablocks.com")
+var protocolSchemaURL, _ = url.Parse("http://schema.ninjablocks.com/protocol/")
 
 func resolveSchemaURI(uri string) string {
 	return resolveSchemaURIWithBase(rootSchemaURL, uri)

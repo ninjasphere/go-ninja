@@ -6,7 +6,6 @@ import (
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 var info = ninja.LoadModuleInfo("./package.json")
@@ -62,7 +61,7 @@ func NewFakeDriver() (*FakeDriver, error) {
 	return driver, nil
 }
 
-func (d *FakeDriver) Start(message *rpc.Message, config *FakeDriverConfig) error {
+func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 	log.Printf("Fake Driver Starting with config %v", config)
 
 	d.config = config
@@ -88,7 +87,7 @@ func (d *FakeDriver) Start(message *rpc.Message, config *FakeDriverConfig) error
 	return d.sendEvent("config", config)
 }
 
-func (d *FakeDriver) Stop(message *rpc.Message) error {
+func (d *FakeDriver) Stop() error {
 	return fmt.Errorf("This driver does not support being stopped. YOU HAVE NO POWER HERE.")
 }
 
@@ -101,7 +100,7 @@ type Out struct {
 	Name string
 }
 
-func (d *FakeDriver) Blarg(message *rpc.Message, in *In) (*Out, error) {
+func (d *FakeDriver) Blarg(in *In) (*Out, error) {
 	log.Printf("GOT INCOMING! %s", in.Name)
 	return &Out{
 		Name: in.Name,

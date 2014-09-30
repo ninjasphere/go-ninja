@@ -1,13 +1,21 @@
 package schemas
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
+	"io"
+	"net"
+	"strings"
+	"sync"
 
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
+var log = logger.GetLogger("schemas")
+
+/*
 func main() {
 	log.Println("Howdy!")
 
@@ -24,24 +32,43 @@ func main() {
 
 	log.Fatalf("Validation Passed")
 
+}*/
+
+type validatorConn struct {
+	sync.Mutex
+	io.Reader
+	io.Writer
+	bufio.Scanner
 }
 
-var validator *shim
+// newCShim starts the shim named file using the provided args.
+func newValidatorConn(port int) (*validatorConn, error) {
+	c := new(validatorConn)
+	var err error
+
+	// TODO: Automatically redial
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		return nil, err
+	}
+
+	c.Writer = conn
+	c.Reader = conn
+
+	c.Mutex = sync.Mutex{}
+	c.Scanner = *bufio.NewScanner(c)
+
+	return c, err
+}
+
+var validator *validatorConn
 var validationEnabled = config.MustBool("validate")
 
 func init() {
-	if validationEnabled {
-		startProcess()
-	}
-}
-
-func startProcess() {
 	var err error
-
-	validator, err = newCShim("sphere-validator")
-
+	validator, err = newValidatorConn(8666)
 	if err != nil {
-		log.Fatalf("Failed to start sphere-validator: %s", err)
+		log.Fatalf("Failed to connect to validator server: %s", err)
 	}
 }
 
@@ -55,16 +82,16 @@ func Validate(schema string, obj interface{}) (*string, error) {
 
 func ValidateString(schema string, json string) (*string, error) {
 	if !validationEnabled {
-		log.Printf("Skipping validation of %s", schema)
+		log.Debugf("Skipping validation of %s", schema)
 		return nil, nil
 	}
 
 	validator.Lock()
 	defer validator.Unlock()
 
-	log.Printf("schema-validator: Sending %s %s", schema, json)
+	log.Debugf("schema-validator: validating %s %s", schema, json)
 
-	_, err := fmt.Fprintf(validator, "%s %s", schema, json)
+	_, err := fmt.Fprintf(validator, "validate %s %s", schema, json)
 	if err != nil {
 		return nil, err
 	}
@@ -79,4 +106,24 @@ func ValidateString(schema string, json string) (*string, error) {
 	}
 
 	return &result, err
+}
+
+func GetServiceMethods(schema string) ([]string, error) {
+
+	validator.Lock()
+	defer validator.Unlock()
+
+	log.Debugf("schema-validator: Getting service methods for %s", schema)
+
+	_, err := fmt.Fprintf(validator, "methods %s", schema)
+	if err != nil {
+		return nil, err
+	}
+
+	validator.Scan()
+
+	err = validator.Err()
+	result := validator.Text()
+
+	return strings.Split(result, ","), err
 }

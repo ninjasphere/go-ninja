@@ -1,16 +1,12 @@
 package channels
 
-import (
-	"mime"
-
-	"github.com/ninjasphere/go-ninja/rpc"
-)
+import "mime"
 
 type MediaDevice interface {
 	PlayURL(url string, autoplay bool) error
 }
 
-// A MediaChannel can be added to devices, exposing http://schemas.ninjablocks.com/protocol/media
+// A MediaChannel can be added to devices, exposing http://schema.ninjablocks.com/protocol/media
 type MediaChannel struct {
 	baseChannel
 	device MediaDevice
@@ -88,11 +84,11 @@ func NewMediaChannel(device MediaDevice) *MediaChannel {
 	}, device}
 }
 
-func (c *MediaChannel) PlayUrl(message *rpc.Message, url *string) error {
+func (c *MediaChannel) PlayUrl(url *string) error {
 	return c.device.PlayURL(*url, false)
 }
 
-func (c *MediaChannel) QueueUrl(message *rpc.Message, url *string) error {
+func (c *MediaChannel) QueueUrl(url *string) error {
 	return c.device.PlayURL(*url, true)
 }
 

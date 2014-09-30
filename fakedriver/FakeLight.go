@@ -9,7 +9,6 @@ import (
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type FakeLight struct {
@@ -58,7 +57,7 @@ func (l *FakeLight) SetEventHandler(sendEvent func(event string, payload interfa
 var reg, _ = regexp.Compile("[^a-z0-9]")
 
 // Exported by service/device schema
-func (l *FakeLight) SetName(message *rpc.Message, name *string) (*string, error) {
+func (l *FakeLight) SetName(name *string) (*string, error) {
 	log.Printf("Setting device name to %s", *name)
 
 	safe := reg.ReplaceAllString(strings.ToLower(*name), "")

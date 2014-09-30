@@ -1,7 +1,5 @@
 package channels
 
-import "github.com/ninjasphere/go-ninja/rpc"
-
 type TransitionDevice interface {
 	SetTransition(state int) error
 }
@@ -17,7 +15,7 @@ func NewTransitionChannel(device TransitionDevice) *TransitionChannel {
 	}, device}
 }
 
-func (c *TransitionChannel) Set(message *rpc.Message, state *int) error {
+func (c *TransitionChannel) Set(state *int) error {
 	c.device.SetTransition(*state)
 	return nil
 }

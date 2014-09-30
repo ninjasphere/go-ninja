@@ -1,7 +1,5 @@
 package channels
 
-import "github.com/ninjasphere/go-ninja/rpc"
-
 type ColorDevice interface {
 	SetColor(state *ColorState) error
 }
@@ -26,6 +24,6 @@ func NewColorChannel(device ColorDevice) *ColorChannel {
 	}, device}
 }
 
-func (c *ColorChannel) Set(message *rpc.Message, state *ColorState) error {
+func (c *ColorChannel) Set(state *ColorState) error {
 	return c.device.SetColor(state)
 }
