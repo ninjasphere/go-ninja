@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"log"
+	"os"
 	"os/exec"
 
 	"github.com/bitly/go-simplejson"
@@ -47,7 +48,7 @@ func Serial() string {
 
 // MustLoadConfig parses the output of "sphere-config"
 func init() {
-	cmd := exec.Command("sphere-config")
+	cmd := exec.Command("sphere-config", os.Args[1:]...)
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
