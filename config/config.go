@@ -20,9 +20,14 @@ func MustInt(path ...string) int {
 	return cfg.GetPath(path...).MustInt()
 }
 
-// MustBool returns the string property at the path
+// MustBool returns the boolean property at the path
 func MustBool(path ...string) bool {
 	return cfg.GetPath(path...).MustBool()
+}
+
+// Bool returns the boolean property at the path, with a default
+func Bool(def bool, path ...string) bool {
+	return cfg.GetPath(path...).MustBool(def)
 }
 
 func Serial() string {

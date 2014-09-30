@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
@@ -165,6 +166,10 @@ func (c *Connection) ExportDriver(driver Driver) error {
 
 	if err != nil {
 		return err
+	}
+
+	if config.Bool(false, "autostart") {
+		c.GetServiceClient(topic).Call("start", struct{}{}, nil, time.Second*20)
 	}
 
 	return nil
