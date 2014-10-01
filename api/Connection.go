@@ -228,7 +228,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	}
 
 	// <TEMPORARY> - Expose channels using the old topic (with the protocol)
-	properAnnouncement := announcement.ServiceAnnouncement
+	/*properAnnouncement := announcement.ServiceAnnouncement
 
 	shortProtocol := strings.TrimPrefix(resolveProtocolURI(channel.GetProtocol()), protocolSchemaURL.String())
 	oldTopic := fmt.Sprintf("$device/%s/channel/%s/%s", device.GetDeviceInfo().ID, id, shortProtocol)
@@ -248,7 +248,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	if err != nil {
 		return err
 	}
-	// </TEMPORARY>
+	// </TEMPORARY>*/
 
 	return nil
 }
