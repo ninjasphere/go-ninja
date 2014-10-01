@@ -1,7 +1,5 @@
 package channels
 
-import "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-
 type BrightnessDevice interface {
 	SetBrightness(state float64) error
 }
@@ -12,10 +10,16 @@ type BrightnessChannel struct {
 }
 
 func NewBrightnessChannel(device BrightnessDevice) *BrightnessChannel {
-	return &BrightnessChannel{baseChannel{}, device}
+	return &BrightnessChannel{baseChannel{
+		protocol: "brightness",
+	}, device}
 }
 
-func (c *BrightnessChannel) Set(message mqtt.Message, state *float64, reply *interface{}) error {
-	c.device.SetBrightness(*state)
+func (c *BrightnessChannel) Set(state float64) error {
+	c.device.SetBrightness(state)
 	return nil
+}
+
+func (c *BrightnessChannel) SendState(state float64) error {
+	return c.SendEvent("state", state)
 }

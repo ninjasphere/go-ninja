@@ -1,5 +1,6 @@
 # go-ninja
-========
+[![forthebadge](http://forthebadge.com/badges/built-by-hipsters.svg)](http://forthebadge.com)
+----------
 
 A Golang library to interact with the Ninja Sphere-- used for creating tubular new drivers.
 
@@ -21,15 +22,3 @@ See https://github.com/bugsnag/bugsnag-go for more information.
 
 
 For development outside of a devkit/sphere, ensure you have sphere-config and sphere-serial in your path.
-
-sphere-config produces output as follows:
-```
-{"mqtt": {"host": "ninjasphere.local","port": 1883}}
-```
-
-sphere-serial produces a unique nodeid as follows:
-```
-TESTSERIAL
-```
-
-A simple bash script which echos these lines is sufficient.

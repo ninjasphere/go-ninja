@@ -28,7 +28,7 @@ type clientRequest struct {
 
 	// The request id. This can be of any type. It is used to match the
 	// response with the request that it is replying to.
-	Id uint32 `json:"id"`
+	ID uint32 `json:"id"`
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
@@ -38,7 +38,7 @@ type clientRequest struct {
 type clientResponse struct {
 	Result  *json.RawMessage `json:"result"`
 	Error   *json.RawMessage `json:"error"`
-	Id      *json.RawMessage `json:"id"`
+	ID      *json.RawMessage `json:"id"`
 	Version string           `json:"jsonrpc"`
 }
 
@@ -55,7 +55,7 @@ func (c *ClientCodec) EncodeClientRequest(call *rpc.Call) ([]byte, error) {
 		Version: "2.0",
 		Method:  call.ServiceMethod,
 		Params:  []interface{}{},
-		Id:      call.Id,
+		ID:      call.ID,
 	}
 
 	if call.Args != nil {
@@ -73,9 +73,9 @@ func (c *ClientCodec) DecodeIdAndError(msg []byte) (*uint32, error) {
 	}
 
 	var id uint32
-	err := json.Unmarshal(*res.Id, &id)
+	err := json.Unmarshal(*res.ID, &id)
 	if err != nil {
-		return nil, fmt.Errorf("Reply id isn't a uint32. Probably not for us '%s'", *res.Id)
+		return nil, fmt.Errorf("Reply id isn't a uint32. Probably not for us '%s'", *res.ID)
 	}
 
 	if res.Error != nil {

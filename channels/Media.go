@@ -1,16 +1,12 @@
 package channels
 
-import (
-	"mime"
-
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-)
+import "mime"
 
 type MediaDevice interface {
 	PlayURL(url string, autoplay bool) error
 }
 
-// A MediaChannel can be added to devices, exposing http://schemas.ninjablocks.com/protocol/media
+// A MediaChannel can be added to devices, exposing http://schema.ninjablocks.com/protocol/media
 type MediaChannel struct {
 	baseChannel
 	device MediaDevice
@@ -83,14 +79,16 @@ type MediaItemAlbum struct {
 }
 
 func NewMediaChannel(device MediaDevice) *MediaChannel {
-	return &MediaChannel{baseChannel{}, device}
+	return &MediaChannel{baseChannel{
+		protocol: "media",
+	}, device}
 }
 
-func (c *MediaChannel) PlayUrl(message mqtt.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) PlayUrl(url *string) error {
 	return c.device.PlayURL(*url, false)
 }
 
-func (c *MediaChannel) QueueUrl(message mqtt.Message, url *string, reply *interface{}) error {
+func (c *MediaChannel) QueueUrl(url *string) error {
 	return c.device.PlayURL(*url, true)
 }
 

@@ -1,14 +1,12 @@
 package model
 
 type Channel struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"channel"`
-	Protocol  string            `json:"protocol"`
-	Supported *ChannelSupported `json:"supported"`
-	Device    *Device           `json:"device"`
+	ServiceAnnouncement
+	ID       string  `json:"id" redis:"id"`
+	Protocol string  `json:"protocol" redis:"protocol"`
+	Device   *Device `json:"device" redis:"-"`
 }
 
-type ChannelSupported struct {
-	Methods *[]string `json:"methods"`
-	Events  *[]string `json:"events"`
+func (c *Channel) GetServiceAnnouncement() *ServiceAnnouncement {
+	return &c.ServiceAnnouncement
 }

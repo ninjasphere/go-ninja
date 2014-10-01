@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if [[ -e /opt/ninjablocks/bin/sphere-config ]]; then
-  /opt/ninjablocks/bin/sphere-config
-else
-  echo '{"mqtt": {"host": "10.0.1.171","port": 1883}}'
-fi

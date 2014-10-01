@@ -7,9 +7,13 @@
 package rpc
 
 import (
+	"fmt"
 	"reflect"
+	"unicode"
+	"unicode/utf8"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/ninjasphere/go-ninja/schemas"
 )
 
 // ----------------------------------------------------------------------------
@@ -18,8 +22,8 @@ import (
 
 // Codec creates a CodecRequest to process each request.
 type Codec interface {
-	NewRequest(topic string, message mqtt.Message) CodecRequest
-	SendNotification(c *mqtt.MqttClient, topic string, payload interface{}) error
+	NewRequest(topic string, message mqtt.Message) (CodecRequest, error)
+	SendNotification(c *mqtt.MqttClient, topic string, payload ...interface{}) error
 }
 
 // CodecRequest decodes a request and encodes a response using a specific
@@ -55,13 +59,37 @@ type Server struct {
 	services *serviceMap
 }
 
-type exportedService struct {
+type ExportedService struct {
 	Methods []string
 	topic   string
 	server  *Server
+	schema  string
 }
 
-func (s *exportedService) SendEvent(event string, payload interface{}) error {
+func (s *ExportedService) SendEvent(event string, payload interface{}) error {
+
+	schema := s.schema + "#/events/" + event + "/value"
+	message, err := schemas.Validate(schema, payload)
+
+	if err != nil {
+		return err
+	}
+
+	if message != nil && event == "announce" {
+		// Assume this is a channel announcement (which doesn't actually define the announce event in every protocol)
+
+		schema = "http://schema.ninjablocks.com/model/channel#"
+		message, err = schemas.Validate(schema, payload)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if message != nil {
+		return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
+	}
+
 	return s.server.SendNotification(s.topic+"/event/"+event, payload)
 }
 
@@ -75,13 +103,13 @@ func (s *exportedService) SendEvent(event string, payload interface{}) error {
 //    - The receiver is exported (begins with an upper case letter) or local
 //      (defined in the package registering the service).
 //    - The method name is exported.
-//    - The method has three arguments: *mqtt.Message, *args, *reply.
-//    - All three arguments are pointers.
-//    - The second and third arguments are exported or local.
-//    - The method has return type error.
+//    - The method's first argument is *mqtt.Message
+//    - If there is a second argument (the RPC params value) it must be exported and a pointer
+//    - If there is a return value, it must be first, exported and a pointer
+//    - The method's last return value is an error
 //
 // All other methods are ignored.
-func (s *Server) RegisterService(receiver interface{}, topic string) (service *exportedService, err error) {
+func (s *Server) RegisterService(receiver interface{}, topic string, schema string) (service *ExportedService, err error) {
 
 	filter, err := mqtt.NewTopicFilter(topic, 0)
 	if err != nil {
@@ -89,7 +117,7 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (service *e
 	}
 
 	receipt, err := s.client.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
-		s.serveRequest(topic, message)
+		go s.serveRequest(topic, message)
 	}, filter)
 
 	if err != nil {
@@ -98,14 +126,33 @@ func (s *Server) RegisterService(receiver interface{}, topic string) (service *e
 
 	<-receipt
 
-	exportedMethods, err := s.services.register(receiver, topic)
+	methods, err := schemas.GetServiceMethods(schema)
+	if err != nil {
+		return nil, err
+	}
 
-	return &exportedService{Methods: exportedMethods, topic: topic, server: s}, err
+	exportedMethods, err := s.services.register(receiver, topic, methods)
+
+	var exportedMethodsLower []string
+
+	for _, m := range exportedMethods {
+		exportedMethodsLower = append(exportedMethodsLower, lowerFirst(m))
+	}
+
+	return &ExportedService{Methods: exportedMethodsLower, topic: topic, server: s, schema: schema}, err
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return ""
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToLower(r)) + s[n:]
 }
 
 // SendNotification sends a one-way notification. Perhaps shouldn't be in Server....
-func (s *Server) SendNotification(topic string, payload interface{}) error {
-	return s.codec.SendNotification(s.client, topic, payload)
+func (s *Server) SendNotification(topic string, params ...interface{}) error {
+	return s.codec.SendNotification(s.client, topic, params...)
 }
 
 // HasMethod returns true if the given method is registered on a topic
@@ -116,11 +163,24 @@ func (s *Server) HasMethod(topic string, method string) bool {
 	return false
 }
 
+type Message struct {
+	Payload []byte
+	Topic   string
+}
+
 // ServeRequest handles an incoming Json-RPC MQTT message
 func (s *Server) serveRequest(topic string, message mqtt.Message) {
 
+	log.Debugf("Serving request to %s", topic)
+
 	// Create a new codec request.
-	codecReq := s.codec.NewRequest(topic, message)
+	codecReq, err := s.codec.NewRequest(topic, message)
+
+	if err != nil {
+		codecReq.WriteError(s.client, err)
+		return
+	}
+
 	// Get service method to be called.
 	method, errMethod := codecReq.Method()
 	if errMethod != nil {
@@ -128,37 +188,74 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		return
 	}
 
-	log.Infof("TOPIC '%s' METHOD '%s'", topic, method)
-
 	serviceSpec, methodSpec, errGet := s.services.get(topic, method)
 	if errGet != nil {
 		codecReq.WriteError(s.client, errGet)
 		return
 	}
 	// Decode the args.
-	args := reflect.New(methodSpec.argsType)
-	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
-		codecReq.WriteError(s.client, errRead)
-		return
+	var args reflect.Value
+	if methodSpec.argsType != nil {
+		if methodSpec.argsType.Kind() == reflect.Ptr {
+			args = reflect.New(methodSpec.argsType.Elem())
+		} else {
+			log.Infof("We don't want a pointer")
+			args = reflect.New(methodSpec.argsType)
+		}
+
+		if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
+			codecReq.WriteError(s.client, errRead)
+			return
+		}
+
 	}
 	// Call the service method.
-	reply := reflect.New(methodSpec.replyType)
-	errValue := methodSpec.method.Func.Call([]reflect.Value{
+
+	params := []reflect.Value{
 		serviceSpec.rcvr,
-		reflect.ValueOf(message),
-		args,
-		reply,
-	})
-	// Cast the result to error if needed.
+	}
+
+	/*
+		TODO: Allow the method to request an rpc.Message
+		reflect.ValueOf(&Message{
+			Payload: message.Payload(),
+			Topic:   topic,
+		}),*/
+
+	if methodSpec.argsType != nil {
+		if methodSpec.argsType.Kind() == reflect.Ptr {
+			params = append(params, args)
+		} else {
+			params = append(params, args.Elem())
+		}
+	}
+
+	/*var reply reflect.Value
+	if methodSpec.replyType != nil {
+		reply = reflect.New(methodSpec.replyType)
+		params = append(params, reply)
+	}*/
+
+	retVals := methodSpec.method.Func.Call(params)
+	// Cast the last result to error if needed.
 	var errResult error
-	errInter := errValue[0].Interface()
+	errInter := retVals[len(retVals)-1].Interface()
 	if errInter != nil {
 		errResult = errInter.(error)
 	}
 
+	var reply reflect.Value
+	if methodSpec.replyType != nil {
+		reply = retVals[0]
+	}
+
 	// Encode the response.
 	if errResult == nil {
-		codecReq.WriteResponse(s.client, reply.Interface())
+		if methodSpec.replyType != nil {
+			codecReq.WriteResponse(s.client, reply.Interface())
+		} else {
+			codecReq.WriteResponse(s.client, nil)
+		}
 	} else {
 		codecReq.WriteError(s.client, errResult)
 	}

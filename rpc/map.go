@@ -8,18 +8,17 @@ package rpc
 
 import (
 	"fmt"
+	log2 "log"
 	"reflect"
 	"sync"
 	"unicode"
 	"unicode/utf8"
-
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
 var (
-	// Precompute the reflect.Type of error and mqtt.Message
+	// Precompute the reflect.Type of error and *rpc.Message
 	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfRequest = reflect.TypeOf((*mqtt.Message)(nil)).Elem()
+	typeOfRequest = reflect.TypeOf((*Message)(nil))
 )
 
 // ----------------------------------------------------------------------------
@@ -49,8 +48,18 @@ type serviceMap struct {
 	services map[string]*service
 }
 
+type rpcService interface {
+	GetRPCMethods() []string
+}
+
 // register adds a new service using reflection to extract its methods.
-func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, err error) {
+func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods []string) (methods []string, err error) {
+
+	/*var providedMethods *[]string
+	switch rcvr := rcvr.(type) {
+	case rpcService:
+		providedMethods = rcvr.GetRPCMethods()
+	}*/
 
 	// Setup service.
 	s := &service{
@@ -62,55 +71,87 @@ func (m *serviceMap) register(rcvr interface{}, name string) (methods []string, 
 	if name == "" {
 		s.name = reflect.Indirect(s.rcvr).Type().Name()
 		if !isExported(s.name) {
-			return nil, fmt.Errorf("rpc: type %q is not exported", s.name)
+			log.Fatalf("rpc: type %q is not exported", s.name)
 		}
 	}
 	if s.name == "" {
-		return nil, fmt.Errorf("rpc: no service name for type %q", s.rcvrType.String())
+		log.Fatalf("rpc: no service name for type %q", s.rcvrType.String())
 	}
 	// Setup methods.
 	for i := 0; i < s.rcvrType.NumMethod(); i++ {
+
 		method := s.rcvrType.Method(i)
 		mtype := method.Type
+
+		//log.Infof("Method: %s", method.Name)
+
+		// Method must be in the list of exportable methods
+		if !isValueInList(lowerFirst(method.Name), exportableMethods) {
+			//log.Infof("Not exportable: %s", method.Name)
+
+			continue
+		}
+
+		// Method must have no or one arguments
+		if mtype.NumIn() > 2 {
+			//log.Infof("Wrong number: %s", method.Name)
+
+			continue
+		}
+
 		// Method must be exported.
 		if method.PkgPath != "" {
+			log.Fatalf("RPC Method '%s' must be exported", method.Name)
 			continue
 		}
-		// Method needs four ins: receiver, *mqtt.Message, *args, *reply.
-		if mtype.NumIn() != 4 {
+
+		// The one argument (args) must be a pointer and must be exported, if its there
+		var args reflect.Type
+		if mtype.NumIn() == 2 {
+			args = mtype.In(1)
+			if !isExportedOrBuiltin(args) {
+				log2.Fatalf("RPC Method %s.%s arguments must be exported", name, method.Name)
+				continue
+			}
+		}
+
+		// Method needs one or two outs
+		if mtype.NumOut() != 1 && mtype.NumOut() != 2 {
+			log2.Fatalf("RPC Method '%s' must have one or two outs", method.Name)
 			continue
 		}
-		// First argument must be a pointer and must be mqtt.Message.
-		reqType := mtype.In(1)
-		if reqType != typeOfRequest {
+
+		// If there are two outs, the first must be exported
+		var reply reflect.Type
+		if mtype.NumOut() == 2 {
+			// Third argument must be a pointer and must be exported.
+			reply = mtype.Out(0)
+			if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
+				log2.Fatalf("RPC Method '%s' return type '%s' must be a pointer and exported", method.Name, reply.Name())
+				continue
+			}
+		}
+
+		// The last out needs to be an error
+		if lastReturn := mtype.Out(mtype.NumOut() - 1); lastReturn != typeOfError {
+			log2.Fatalf("RPC Method '%s' must return only an error", method.Name)
 			continue
 		}
-		// Second argument must be a pointer and must be exported.
-		args := mtype.In(2)
-		if args.Kind() != reflect.Ptr || !isExportedOrBuiltin(args) {
-			continue
-		}
-		// Third argument must be a pointer and must be exported.
-		reply := mtype.In(3)
-		if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
-			continue
-		}
-		// Method needs one out: error.
-		if mtype.NumOut() != 1 {
-			continue
-		}
-		if returnType := mtype.Out(0); returnType != typeOfError {
-			continue
-		}
+
 		s.methods[method.Name] = &serviceMethod{
-			method:    method,
-			argsType:  args.Elem(),
-			replyType: reply.Elem(),
+			method: method,
 		}
+		if reply != nil {
+			s.methods[method.Name].replyType = reply.Elem()
+		}
+		if args != nil {
+			s.methods[method.Name].argsType = args
+		}
+
 	}
-	if len(s.methods) == 0 {
+	/*if len(s.methods) == 0 {
 		return nil, fmt.Errorf("rpc: %q has no exported methods of suitable type", s.name)
-	}
+	}*/
 	// Add to the map.
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -161,4 +202,13 @@ func isExportedOrBuiltin(t reflect.Type) bool {
 	// PkgPath will be non-empty even for an exported type,
 	// so we need to check the type name as well.
 	return isExported(t.Name()) || t.PkgPath() == ""
+}
+
+func isValueInList(value string, list []string) bool {
+	for _, v := range list {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }

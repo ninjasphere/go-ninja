@@ -1,0 +1,10 @@
+{
+  "id": "com.ninjablocks.fake",
+  "name": "Fake Driver",
+  "version": "0.1.0",
+  "description": "A fake driver used for testing",
+  "main": "driver-go-fake",
+  "author": "Elliot Shepherd <elliot@ninjablocks.com>",
+  "license": "MIT",
+  "maxMemory": 5
+}

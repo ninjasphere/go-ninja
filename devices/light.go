@@ -6,12 +6,11 @@ import (
 	"math"
 	"sync"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/lucasb-eyer/go-colorful"
-	"github.com/ninjasphere/go-ninja"
-	"github.com/ninjasphere/go-ninja/logger"
-
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/model"
 )
 
 var log = logger.GetLogger("LightDevice")
@@ -34,11 +33,19 @@ type LightBatchChannel struct {
 	light *LightDevice
 }
 
-func (c *LightBatchChannel) SetBatch(message mqtt.Message, state *LightDeviceState, reply *interface{}) error {
+func (c *LightBatchChannel) SetBatch(state *LightDeviceState) error {
 	return c.light.SetBatch(state)
 }
 
+func (c *LightBatchChannel) GetProtocol() string {
+	return "core.batching"
+}
+
+func (c *LightBatchChannel) SetEventHandler(_ func(event string, payload interface{}) error) {
+}
+
 type LightDevice struct {
+	baseDevice
 	sync.Mutex
 
 	// SetLightState is required, and should actually set the state on the physical light
@@ -51,10 +58,8 @@ type LightDevice struct {
 	ApplyColor      func(state *channels.ColorState) error
 	ApplyTransition func(state int) error
 
-	bus        *ninja.DeviceBus
 	state      *LightDeviceState
 	batch      bool
-	log        *logger.Logger
 	colorModes []string
 
 	onOff      *channels.OnOffChannel
@@ -258,12 +263,12 @@ func (d *LightDevice) ToggleOnOff() error {
 
 func (d *LightDevice) EnableOnOffChannel() error {
 	d.onOff = channels.NewOnOffChannel(d)
-	return d.bus.AddChannel(d.onOff, "on-off", "on-off")
+	return d.conn.ExportChannel(d, d.onOff, "on-off")
 }
 
 func (d *LightDevice) EnableBrightnessChannel() error {
 	d.brightness = channels.NewBrightnessChannel(d)
-	return d.bus.AddChannel(d.brightness, "brightness", "brightness")
+	return d.conn.ExportChannel(d, d.brightness, "brightness")
 }
 
 func (d *LightDevice) EnableColorChannel(supportedModes ...string) error {
@@ -275,29 +280,41 @@ func (d *LightDevice) EnableColorChannel(supportedModes ...string) error {
 	}
 	d.colorModes = supportedModes
 	d.color = channels.NewColorChannel(d)
-	return d.bus.AddChannel(d.color, "color", "color")
+	return d.conn.ExportChannel(d, d.color, "color")
 }
 
 func (d *LightDevice) EnableTransitionChannel() error {
 	d.transition = channels.NewTransitionChannel(d)
-	return d.bus.AddChannel(d.transition, "transition", "transition")
+	return d.conn.ExportChannel(d, d.transition, "transition")
 }
 
-func CreateLightDevice(name string, bus *ninja.DeviceBus) (*LightDevice, error) {
+func CreateLightDevice(driver ninja.Driver, info *model.Device, conn *ninja.Connection) (*LightDevice, error) {
 
-	light := &LightDevice{
-		bus: bus,
-		log: logger.GetLogger("LightDevice - " + name),
+	d := &LightDevice{
+		baseDevice: baseDevice{
+			conn:   conn,
+			driver: driver,
+			log:    logger.GetLogger("LightDevice - " + *info.Name),
+			info:   info,
+		},
 	}
 
-	err := bus.AddChannel(&LightBatchChannel{light}, "core.batching", "core.batching")
+	err := conn.ExportDevice(d)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create batch channel: %s", err)
+		d.log.Fatalf("Failed to export device %s: %s", *info.Name, err)
 	}
 
-	light.log.Infof("Created")
+	methods := []string{"setBatch"}
+	events := []string{}
 
-	return light, nil
+	err = conn.ExportChannelWithSupported(d, &LightBatchChannel{d}, "batch", &methods, &events)
+	if err != nil {
+		d.log.Fatalf("Failed to create batch channel: %s", err)
+	}
+
+	d.log.Infof("Created")
+
+	return d, nil
 }
 
 // from http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/

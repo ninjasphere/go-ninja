@@ -1,11 +1,17 @@
 package model
 
+// Device TODO: The channels and thing might want to be on a struct thats only used in the devicemodel service?
 type Device struct {
-	ID         string             `json:"id" redis:"id"`
-	IDType     string             `json:"idType" redis:"idType"`
-	Guid       string             `json:"guid" redis:"guid"`
-	Name       *string            `json:"name,omitEmpty" redis:"name"`
-	Thing      *string            `json:"thing,omitEmpty" redis:"thing"`
-	Channels   *[]Channel         `json:"channels,omitEmpty" redis:"-"`
-	Signatures *map[string]string `json:"signatures,omitEmpty" redis:"signatures,json"`
+	ServiceAnnouncement
+	ID            string             `json:"id" redis:"id"`
+	NaturalID     string             `json:"naturalId" redis:"naturalId"`
+	NaturalIDType string             `json:"naturalIdType" redis:"naturalIdType"`
+	Name          *string            `json:"name,omitempty" redis:"name"`
+	Thing         *string            `json:"thing,omitempty" redis:"thing"`
+	Channels      *[]*Channel        `json:"channels,omitempty" redis:"-"`
+	Signatures    *map[string]string `json:"signatures,omitempty" redis:"signatures,json"`
+}
+
+func (d *Device) GetServiceAnnouncement() *ServiceAnnouncement {
+	return &d.ServiceAnnouncement
 }
