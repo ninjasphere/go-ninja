@@ -15,11 +15,6 @@ func NewPowerChannel(device PowerDevice) *PowerChannel {
 	}, device}
 }
 
-func (c *PowerChannel) Set(state float64) error {
-	c.device.SetPower(state)
-	return nil
-}
-
 func (c *PowerChannel) SendState(state float64) error {
 	return c.SendEvent("state", state)
 }
