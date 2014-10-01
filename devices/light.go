@@ -6,7 +6,6 @@ import (
 	"math"
 	"sync"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
@@ -34,7 +33,7 @@ type LightBatchChannel struct {
 	light *LightDevice
 }
 
-func (c *LightBatchChannel) SetBatch(message mqtt.Message, state *LightDeviceState) error {
+func (c *LightBatchChannel) SetBatch(state *LightDeviceState) error {
 	return c.light.SetBatch(state)
 }
 
