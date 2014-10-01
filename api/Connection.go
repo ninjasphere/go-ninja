@@ -52,6 +52,8 @@ func Connect(clientID string) (*Connection, error) {
 
 	mqttURL := fmt.Sprintf("tcp://%s:%d", config.MustString("mqtt", "host"), config.MustInt("mqtt", "port"))
 
+	log.Infof("Connecting to %s using cid:%s", mqttURL, clientID)
+
 	opts := mqtt.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true)
 	conn.mqtt = mqtt.NewClient(opts)
 
@@ -59,10 +61,10 @@ func Connect(clientID string) (*Connection, error) {
 		return nil, err
 	}
 
+	log.Infof("Connected")
+
 	conn.rpc = rpc.NewClient(conn.mqtt, json2.NewClientCodec())
 	conn.rpcServer = rpc.NewServer(conn.mqtt, json2.NewCodec())
-
-	log.Infof("Connected to %s using cid:%s", mqttURL, clientID)
 
 	job, err := CreateStatusJob(&conn, clientID)
 
@@ -169,7 +171,10 @@ func (c *Connection) ExportDriver(driver Driver) error {
 	}
 
 	if config.Bool(false, "autostart") {
-		c.GetServiceClient(topic).Call("start", struct{}{}, nil, time.Second*20)
+		err := c.GetServiceClient(topic).Call("start", struct{}{}, nil, time.Second*20)
+		if err != nil {
+			c.log.Fatalf("Failed to autostart driver: %s", err)
+		}
 	}
 
 	return nil
