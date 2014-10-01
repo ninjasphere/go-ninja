@@ -147,7 +147,7 @@ func (call *Call) done() {
 
 }
 
-// CallWithTimeout invokes the function asynchronously.
+// CallWithTimeout invokes a function synchronously.
 func (client *Client) CallWithTimeout(topic string, serviceMethod string, args interface{}, reply interface{}, timeout time.Duration) error {
 	call := &Call{
 		ID:            rand.Uint32(),
