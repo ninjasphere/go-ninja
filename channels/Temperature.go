@@ -1,7 +1,6 @@
 package channels
 
 type TemperatureDevice interface {
-	SetTemperature(state float64) error
 }
 
 type TemperatureChannel struct {

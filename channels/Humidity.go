@@ -1,7 +1,6 @@
 package channels
 
 type HumidityDevice interface {
-	SetHumidity(state float64) error
 }
 
 type HumidityChannel struct {

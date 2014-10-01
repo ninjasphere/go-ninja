@@ -1,7 +1,6 @@
 package channels
 
 type PowerDevice interface {
-	SetPower(state float64) error
 }
 
 type PowerChannel struct {
