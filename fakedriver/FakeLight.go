@@ -19,11 +19,20 @@ type FakeLight struct {
 }
 
 func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
+	name := fmt.Sprintf("Fancy Fake Light %d", id)
+	
 	light := &FakeLight{
 		driver: driver,
 		info: &model.Device{
 			NaturalID:     fmt.Sprintf("light%d", id),
 			NaturalIDType: "fake",
+			Name:          &name,
+			Signatures: &map[string]string{
+				"ninja:manufacturer": "Fake Co.",
+				"ninja:productName":  "FakeLight",
+				"ninja:productType":  "Light",
+				"ninja:thingType":    "light",
+			},
 		},
 	}
 
