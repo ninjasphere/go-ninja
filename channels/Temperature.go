@@ -10,7 +10,7 @@ type TemperatureChannel struct {
 
 func NewTemperatureChannel(device TemperatureDevice) *TemperatureChannel {
 	return &TemperatureChannel{baseChannel{
-		protocol: "humidity",
+		protocol: "temperature",
 	}, device}
 }
 

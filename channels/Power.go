@@ -10,7 +10,7 @@ type PowerChannel struct {
 
 func NewPowerChannel(device PowerDevice) *PowerChannel {
 	return &PowerChannel{baseChannel{
-		protocol: "humidity",
+		protocol: "power",
 	}, device}
 }
 
