@@ -5,6 +5,6 @@ type Thing struct {
 	Type     string  `json:"type" redis:"type"`
 	Name     string  `json:"name" redis:"name"`
 	Device   *Device `json:"device,omitempty" redis:"-"`
-	DeviceID *string `json:"-" redis:"device"`
+	DeviceID *string `json:"deviceId,omitempty" redis:"device"`
 	Location *string `json:"location,omitempty" redis:"location"`
 }
