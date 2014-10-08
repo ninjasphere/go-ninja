@@ -85,6 +85,10 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 
 		//log.Infof("Method: %s", method.Name)
 
+		if !isExported(method.Name) {
+			continue
+		}
+
 		// Method must be in the list of exportable methods
 		if !isValueInList(lowerFirst(method.Name), exportableMethods) {
 			//log.Infof("Not exportable: %s", method.Name)
