@@ -124,7 +124,7 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 		// If there are two outs, the first must be exported
 		var reply reflect.Type
 		if mtype.NumOut() == 2 {
-			// Third argument must be a pointer and must be exported.
+			// The first return value must be a pointer and must be exported.
 			reply = mtype.Out(0)
 			if reply.Kind() != reflect.Ptr || !isExportedOrBuiltin(reply) {
 				log2.Fatalf("RPC Method '%s' return type '%s' must be a pointer and exported", method.Name, reply.Name())
