@@ -10,9 +10,16 @@ type ServiceClient struct {
 	topic string
 }
 
-func (c *ServiceClient) OnEvent(event string, callback func(params *json.RawMessage) bool) error {
+// OnEvent builds a simple subscriber which supports pulling apart the topic
+//
+// 	err := sm.conn.GetServiceClient("$device/:deviceid/channel/:channelid").OnEvent("state", func(params *json.RawMessage) {
+//  	..
+//	}, true) // true continues to consume messages
+//
+//
+func (c *ServiceClient) OnEvent(event string, callback func(params *json.RawMessage, values map[string]string) bool) error {
 	return c.conn.Subscribe(c.topic+"/event/"+event, func(params *json.RawMessage, values map[string]string) bool {
-		return callback(params)
+		return callback(params, values)
 	})
 }
 
