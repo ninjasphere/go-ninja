@@ -7,7 +7,7 @@ type Device struct {
 	NaturalID     string             `json:"naturalId" redis:"naturalId"`
 	NaturalIDType string             `json:"naturalIdType" redis:"naturalIdType"`
 	Name          *string            `json:"name,omitempty" redis:"name"`
-	Thing         *string            `json:"thing,omitempty" redis:"thing"`
+	ThingID       *string            `json:"thing,omitempty" redis:"-"`
 	Channels      *[]*Channel        `json:"channels,omitempty" redis:"-"`
 	Signatures    *map[string]string `json:"signatures,omitempty" redis:"signatures,json"`
 }
