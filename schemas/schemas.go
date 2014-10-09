@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -35,6 +36,7 @@ func main() {
 }*/
 
 type validatorConn struct {
+	conn net.Conn
 	sync.Mutex
 	io.Reader
 	io.Writer
@@ -52,6 +54,8 @@ func newValidatorConn(port int) (*validatorConn, error) {
 		return nil, err
 	}
 
+	c.conn = conn
+
 	c.Writer = conn
 	c.Reader = conn
 
@@ -65,6 +69,13 @@ var validator *validatorConn
 var validationEnabled = config.MustBool("validate")
 
 func init() {
+	connectToValidator()
+}
+
+func connectToValidator() {
+	if validator != nil {
+		validator.conn.Close()
+	}
 	var err error
 	validator, err = newValidatorConn(8666)
 	if err != nil {
@@ -89,11 +100,16 @@ func ValidateString(schema string, json string) (*string, error) {
 	validator.Lock()
 	defer validator.Unlock()
 
-	log.Debugf("schema-validator: validating %s %s", schema, json)
+	log.Debugf("Xschema-validator: validating %s %s", schema, json)
 
 	_, err := fmt.Fprintf(validator, "validate %s %s", schema, json)
 	if err != nil {
-		return nil, err
+		log.Infof("Validator errored. Will try to reconnect in a few seconds. Message:%s", err)
+		time.Sleep(time.Second * 3)
+		connectToValidator()
+		time.Sleep(time.Second * 5)
+		validator.Unlock()
+		return ValidateString(schema, json)
 	}
 
 	validator.Scan()
@@ -117,7 +133,12 @@ func GetServiceMethods(schema string) ([]string, error) {
 
 	_, err := fmt.Fprintf(validator, "methods %s", schema)
 	if err != nil {
-		return nil, err
+		log.Infof("Validator errored. Will try to reconnect in a few seconds. Message:%s", err)
+		time.Sleep(time.Second * 3)
+		connectToValidator()
+		time.Sleep(time.Second * 5)
+		validator.Unlock()
+		return GetServiceMethods(schema)
 	}
 
 	validator.Scan()
@@ -125,5 +146,5 @@ func GetServiceMethods(schema string) ([]string, error) {
 	err = validator.Err()
 	result := validator.Text()
 
-	return strings.Split(result, ","), err
+	return strings.Split(result, ","), nil
 }
