@@ -7,4 +7,5 @@ type Thing struct {
 	Device   *Device `json:"device,omitempty" redis:"-"`
 	DeviceID *string `json:"deviceId,omitempty" redis:"-"`
 	Location *string `json:"location,omitempty" redis:"location"`
+	Promoted bool    `json:"promoted" redis:"promoted"`
 }
