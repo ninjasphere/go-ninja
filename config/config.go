@@ -34,19 +34,25 @@ func Bool(def bool, path ...string) bool {
 func String(def string, path ...string) string {
 	return cfg.GetPath(path...).MustString(def)
 }
+
+var serial string
+
 func Serial() string {
+	if serial == "" {
+		cmd := exec.Command("sphere-serial")
 
-	cmd := exec.Command("sphere-serial")
+		var out bytes.Buffer
+		cmd.Stdout = &out
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+		}
 
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+		serial = out.String()
 	}
 
-	return out.String()
+	return serial
 }
 
 // MustLoadConfig parses the output of "sphere-config"
