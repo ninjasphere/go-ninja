@@ -215,7 +215,6 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	announcement := &model.Channel{
 		ID:       id,
 		Protocol: channel.GetProtocol(),
-		Device:   device.GetDeviceInfo(),
 	}
 
 	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().ID, id)
