@@ -104,7 +104,9 @@ func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload 
 	notification.Params = &rawPayload
 	jsonNotification, err := json.Marshal(notification)
 
-	log.Debugf("< Outgoing to %s : %s", topic, jsonNotification)
+	if !strings.HasSuffix(topic, "/module/status") {
+		log.Debugf("< Outgoing to %s : %s", topic, jsonNotification)
+	}
 
 	client.Publish(mqtt.QoS(0), topic, jsonNotification)
 

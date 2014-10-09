@@ -32,7 +32,7 @@ func CreateStatusJob(conn *Connection, driverName string) (*StatusJob, error) {
 
 // Start spawn the status job
 func (m *StatusJob) Start() {
-	m.statusTicker = time.NewTicker(2 * time.Second)
+	m.statusTicker = time.NewTicker(15 * time.Second)
 
 	go func() {
 		for {
