@@ -75,18 +75,8 @@ func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 		return err
 	}
 
-	if message != nil && event == "announce" {
-		// Assume this is a channel announcement (which doesn't actually define the announce event in every protocol)
-
-		schema = "http://schema.ninjablocks.com/model/channel#"
-		message, err = schemas.Validate(schema, payload)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if message != nil {
+	// We ignore announce events, as we don't define them in all the protocols/services
+	if message != nil && event != "announce" {
 		return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
 	}
 
