@@ -31,6 +31,9 @@ func Bool(def bool, path ...string) bool {
 	return cfg.GetPath(path...).MustBool(def)
 }
 
+func String(def string, path ...string) string {
+	return cfg.GetPath(path...).MustString(def)
+}
 func Serial() string {
 
 	cmd := exec.Command("sphere-serial")
