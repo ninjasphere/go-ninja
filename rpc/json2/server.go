@@ -230,7 +230,7 @@ func ReadRPCParams(params *json.RawMessage, args interface{}) error {
 // WriteResponse encodes the response and writes it to the reply topic
 func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{}) {
 	if reply == nil {
-		reply = json.RawMessage([]byte("null"))
+		reply = &null
 	}
 	res := &serverResponse{
 		Version: Version,
