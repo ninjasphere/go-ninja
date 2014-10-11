@@ -20,7 +20,7 @@ type FakeLight struct {
 
 func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
 	name := fmt.Sprintf("Fancy Fake Light %d", id)
-	
+
 	light := &FakeLight{
 		driver: driver,
 		info: &model.Device{
