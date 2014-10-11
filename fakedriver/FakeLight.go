@@ -12,10 +12,12 @@ import (
 )
 
 type FakeLight struct {
-	driver       ninja.Driver
-	info         *model.Device
-	sendEvent    func(event string, payload interface{}) error
-	onOffChannel *channels.OnOffChannel
+	driver            ninja.Driver
+	info              *model.Device
+	sendEvent         func(event string, payload interface{}) error
+	onOffChannel      *channels.OnOffChannel
+	brightnessChannel *channels.BrightnessChannel
+	colorChannel      *channels.ColorChannel
 }
 
 func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
@@ -37,6 +39,8 @@ func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
 	}
 
 	light.onOffChannel = channels.NewOnOffChannel(light)
+	light.brightnessChannel = channels.NewBrightnessChannel(light)
+	light.colorChannel = channels.NewColorChannel(light)
 
 	return light
 }
@@ -56,6 +60,16 @@ func (l *FakeLight) SetOnOff(state bool) error {
 
 func (l *FakeLight) ToggleOnOff() error {
 	log.Println("Toggling")
+	return nil
+}
+
+func (l *FakeLight) SetColor(state *channels.ColorState) error {
+	log.Printf("setting color state to %v", state)
+	return nil
+}
+
+func (l *FakeLight) SetBrightness(state float64) error {
+	log.Printf("setting brightness to %f", state)
 	return nil
 }
 

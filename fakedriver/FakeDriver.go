@@ -81,6 +81,16 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 		if err != nil {
 			log.Fatalf("Failed to export fake light on off channel %d: %s", i, err)
 		}
+
+		err = d.conn.ExportChannel(device, device.brightnessChannel, "brightness")
+		if err != nil {
+			log.Fatalf("Failed to export fake light brightness channel %d: %s", i, err)
+		}
+
+		err = d.conn.ExportChannel(device, device.colorChannel, "color")
+		if err != nil {
+			log.Fatalf("Failed to export fake color channel %d: %s", i, err)
+		}
 	}
 
 	// Bump the config prop by one... to test it updates
