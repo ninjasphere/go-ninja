@@ -25,3 +25,7 @@ func (d *baseDevice) GetDriver() ninja.Driver {
 func (d *baseDevice) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
 	d.sendEvent = sendEvent
 }
+
+func (d *baseDevice) Log() *logger.Logger {
+	return d.log
+}
