@@ -81,12 +81,10 @@ func (fake *fakeMediaPlayer) applyPlayPause(playing bool) error {
 
 	fake.ninja.Log().Infof("applyPlayPause called, playing: %t", playing)
 
-	// This seems backwards, but matches current sonos behaviour 11 Oct 2014
-
 	if playing {
-		return fake.ninja.UpdateControlState(channels.MediaControlEventPaused)
-	} else {
 		return fake.ninja.UpdateControlState(channels.MediaControlEventPlaying)
+	} else {
+		return fake.ninja.UpdateControlState(channels.MediaControlEventPaused)
 	}
 }
 
