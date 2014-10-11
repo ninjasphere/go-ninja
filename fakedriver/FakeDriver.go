@@ -26,12 +26,14 @@ type FakeDriver struct {
 }
 
 type FakeDriverConfig struct {
-	NumberOfDevices int
+	NumberOfLights       int
+	NumberOfMediaPlayers int
 }
 
 func defaultConfig() *FakeDriverConfig {
 	return &FakeDriverConfig{
-		NumberOfDevices: 5,
+		NumberOfLights:       5,
+		NumberOfMediaPlayers: 1,
 	}
 }
 
@@ -66,8 +68,8 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 
 	d.config = config
 
-	for i := 0; i < d.config.NumberOfDevices; i++ {
-		log.Print("Creating new device")
+	for i := 0; i < d.config.NumberOfLights; i++ {
+		log.Print("Creating new fake light")
 		device := NewFakeLight(d, i)
 
 		err := d.conn.ExportDevice(device)
@@ -82,7 +84,19 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 	}
 
 	// Bump the config prop by one... to test it updates
-	config.NumberOfDevices++
+	config.NumberOfLights++
+
+	if d.config.NumberOfMediaPlayers == 0 {
+		d.config.NumberOfMediaPlayers = 1
+	}
+
+	for i := 0; i < d.config.NumberOfMediaPlayers; i++ {
+		log.Print("Creating new fake media player")
+		_, err := NewFakeMediaPlayer(d, d.conn, i)
+		if err != nil {
+			log.Fatalf("failed to create fake media player")
+		}
+	}
 
 	return d.sendEvent("config", config)
 }
