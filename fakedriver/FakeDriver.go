@@ -26,12 +26,14 @@ type FakeDriver struct {
 }
 
 type FakeDriverConfig struct {
+	Initialised          bool
 	NumberOfLights       int
 	NumberOfMediaPlayers int
 }
 
 func defaultConfig() *FakeDriverConfig {
 	return &FakeDriverConfig{
+		Initialised:          true,
 		NumberOfLights:       5,
 		NumberOfMediaPlayers: 1,
 	}
@@ -67,6 +69,9 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 	log.Printf("Fake Driver Starting with config %v", config)
 
 	d.config = config
+	if !d.config.Initialised {
+		d.config = defaultConfig()
+	}
 
 	for i := 0; i < d.config.NumberOfLights; i++ {
 		log.Print("Creating new fake light")
@@ -95,10 +100,6 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 
 	// Bump the config prop by one... to test it updates
 	config.NumberOfLights++
-
-	if d.config.NumberOfMediaPlayers == 0 {
-		d.config.NumberOfMediaPlayers = 1
-	}
 
 	for i := 0; i < d.config.NumberOfMediaPlayers; i++ {
 		log.Print("Creating new fake media player")
