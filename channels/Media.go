@@ -50,7 +50,7 @@ type MusicTrackMediaItem struct {
 	ID          *string            `json:"id,omitempty"`
 	ExternalIDs *map[string]string `json:"externalIds,omitempty"`
 	ContentType *MediaContentType  `json:"contentType,omitempty"`
-	Type        *string            `json:"type,omitempty"`
+	Type        string             `json:"type"`
 	Title       *string            `json:"title,omitempty"`
 	Image       *MediaItemImage    `json:"image,omitempty"`
 	Duration    *int               `json:"duration,omitempty"`
@@ -97,5 +97,6 @@ func (c *MediaChannel) SendGenericState(state *GenericMediaItem) error {
 }
 
 func (c *MediaChannel) SendMusicTrackState(state *MusicTrackMediaItem, position *int) error {
+	state.Type = "music-track"
 	return c.SendEvent("state", &MusicTrackMediaState{state, position})
 }
