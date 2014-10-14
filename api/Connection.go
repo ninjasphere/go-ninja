@@ -94,9 +94,14 @@ type rpcMessage struct {
 
 // Subscribe allows you to subscribe to an MQTT topic. Topics can contain variables of the form ":myvar" which will
 // be returned in the values map in the callback. The callback must return "true" if it wants to receive more messages.
-func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessage, values map[string]string) bool) error {
+func (c *Connection) Subscribe(topic string, callback interface{}) error {
 
-	adapter := callback
+	adapter, err := getAdapter(c.log, callback)
+	if (err != nil) {
+	   c.log.FatalError(err, fmt.Sprintf("Incompatible callback function provided as callback for topic %s", topic))
+	   return err
+	}
+
 	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
 	if err != nil {
 		c.log.FatalError(err, "Failed to subscribe to "+topic)
