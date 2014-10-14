@@ -117,7 +117,7 @@ func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessa
 			err := json.Unmarshal(message.Payload(), msg)
 
 			if err != nil {
-				c.log.Warningf("Failed to read parameters in rpc call to %s", message.Topic())
+				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
 				return
 			}
 
@@ -125,7 +125,7 @@ func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessa
 
 			json2.ReadRPCParams(msg.Params, &params)
 			if err != nil {
-				c.log.Warningf("Failed to read parameters in rpc call to %s", message.Topic())
+				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
 				return
 			}
 
