@@ -93,7 +93,16 @@ type rpcMessage struct {
 }
 
 // Subscribe allows you to subscribe to an MQTT topic. Topics can contain variables of the form ":myvar" which will
-// be returned in the values map in the callback. The callback must return "true" if it wants to receive more messages.
+// be returned in the values map in the callback. 
+//
+// The provided callback must be a function of 0, 1 or 2 parameters which returns
+// "true" if it wants to receive more messages.
+//
+// The first parameter must either of type *json.RawMessage or else a pointer to a go struct type to which
+// the expected event payload can be successfully unmarshalled.
+//
+// The second parameter should be of type map[string]string and will contain one value for each place holder
+// specified in the topic string.
 func (c *Connection) Subscribe(topic string, callback interface{}) error {
 
 	adapter, err := getAdapter(c.log, callback)
