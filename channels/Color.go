@@ -8,7 +8,7 @@ type ColorState struct {
 	Mode        string   `json:"mode,omitempty"`
 	Hue         *float64 `json:"hue,omitempty"`
 	Saturation  *float64 `json:"saturation,omitempty"`
-	Temperature *int     `json:"temperature,omitempty"`
+	Temperature *float64 `json:"temperature,omitempty"`
 	X           *float64 `json:"x,omitempty"`
 	Y           *float64 `json:"y,omitempty"`
 }
