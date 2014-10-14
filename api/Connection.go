@@ -96,6 +96,7 @@ type rpcMessage struct {
 // be returned in the values map in the callback. The callback must return "true" if it wants to receive more messages.
 func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessage, values map[string]string) bool) error {
 
+	adapter := callback
 	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
 	if err != nil {
 		c.log.FatalError(err, "Failed to subscribe to "+topic)
@@ -138,7 +139,7 @@ func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessa
 
 			// The callback needs to be run in a goroutine as blocking this thread prevents any other messages arriving
 			go func() {
-				if !callback(&params, *values) {
+				if !adapter(&params, *values) {
 					// The callback has returned false, indicating that it does not want to receive any more messages.
 					finished = true
 				}
