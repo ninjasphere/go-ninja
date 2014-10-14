@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/events"
 	"github.com/ninjasphere/go-ninja/model"
 )
 
@@ -22,6 +24,7 @@ var info = ninja.LoadModuleInfo("./package.json")
 type FakeDriver struct {
 	config    *FakeDriverConfig
 	conn      *ninja.Connection
+	userAgent *ninja.ServiceClient
 	sendEvent func(event string, payload interface{}) error
 }
 
@@ -47,8 +50,11 @@ func NewFakeDriver() (*FakeDriver, error) {
 		log.Fatalf("Failed to create fake driver: %s", err)
 	}
 
+	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+
 	driver := &FakeDriver{
-		conn: conn,
+		conn:      conn,
+		userAgent: userAgent,
 	}
 
 	err = conn.ExportDriver(driver)
@@ -62,7 +68,23 @@ func NewFakeDriver() (*FakeDriver, error) {
 		driver.Start(nil, nil, nil)
 	}()*/
 
+	userAgent.OnUnmarshalledEvent("pairing-requested", driver.OnPairingRequest)
+
 	return driver, nil
+}
+
+func (d *FakeDriver) OnPairingRequest(pairingRequest *events.PairingRequest, values map[string]string) bool {
+	log.Printf("Pairing request received from %s for %d seconds", values["deviceId"], pairingRequest.Duration)
+	d.sendEvent("pairing-started", &events.PairingStarted{
+		Duration: pairingRequest.Duration,
+	})
+	go func() {
+		time.Sleep(time.Second * time.Duration(pairingRequest.Duration))
+		d.sendEvent("pairing-ended", &events.PairingStarted{
+			Duration: pairingRequest.Duration,
+		})
+	}()
+	return true
 }
 
 func (d *FakeDriver) Start(config *FakeDriverConfig) error {
