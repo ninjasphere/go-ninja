@@ -68,7 +68,7 @@ func NewFakeDriver() (*FakeDriver, error) {
 		driver.Start(nil, nil, nil)
 	}()*/
 
-	userAgent.OnUnmarshalledEvent("pairing-requested", driver.OnPairingRequest)
+	userAgent.OnEvent("pairing-requested", driver.OnPairingRequest)
 
 	return driver, nil
 }
