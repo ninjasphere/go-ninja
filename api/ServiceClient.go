@@ -35,7 +35,7 @@ func (c *ServiceClient) OnEvent(event string, callback func(params *json.RawMess
 // values, if supplied, is a map of parameters as per OnEvent
 //
 func (c *ServiceClient) OnUnmarshalledEvent(event string, callback interface{}) error {
-	return c.conn.SimplySubscribe(c.topic+"/event/"+event, callback);
+	return c.conn.SimplySubscribe(c.topic+"/event/"+event, callback)
 }
 
 func (c *ServiceClient) Call(method string, args interface{}, reply interface{}, timeout time.Duration) error {

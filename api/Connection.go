@@ -151,12 +151,12 @@ func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessa
 }
 
 func (c *Connection) SimplySubscribe(topic string, callback interface{}) error {
-	adapter, err := newAdapter(c.log, callback)
+	adapter, err := getAdapter(c.log, callback)
 	if err != nil {
 		c.log.Fatalf("failed to bind callback: %v", err)
 		return err
 	}
-	return c.Subscribe(topic, adapter.invoke)
+	return c.Subscribe(topic, adapter)
 }
 
 // GetServiceClient returns an RPC client for the given service.
@@ -396,7 +396,7 @@ func (self *adapter) invoke(params *json.RawMessage, values map[string]string) b
 	return self.function.Call(args)[0].Interface().(bool)
 }
 
-func newAdapter(log *logger.Logger, callback interface{}) (*adapter, error) {
+func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.RawMessage, values map[string]string) bool, error) {
 	var err error = nil
 
 	value := reflect.ValueOf(callback)
@@ -441,10 +441,12 @@ func newAdapter(log *logger.Logger, callback interface{}) (*adapter, error) {
 		return nil, err
 	}
 
-	return &adapter{
+	tmp := &adapter{
 		log:      log,
 		function: value,
 		argCount: numIn,
 		argType:  argType,
-	}, err
+	}
+
+	return tmp.invoke, err
 }
