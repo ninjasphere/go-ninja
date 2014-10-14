@@ -171,10 +171,6 @@ func (c *Connection) Subscribe(topic string, callback interface{}) error {
 	return nil
 }
 
-func (c *Connection) SimplySubscribe(topic string, callback interface{}) error {
-	return c.Subscribe(topic, callback)
-}
-
 // GetServiceClient returns an RPC client for the given service.
 func (c *Connection) GetServiceClient(serviceTopic string) *ServiceClient {
 	return &ServiceClient{c, serviceTopic}

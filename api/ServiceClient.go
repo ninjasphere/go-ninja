@@ -28,11 +28,6 @@ func (c *ServiceClient) OnEvent(event string, callback interface{}) error {
 	return c.conn.Subscribe(c.topic+"/event/"+event, callback);
 }
 
-// deprecreated - use OnEvent
-func (c *ServiceClient) OnUnmarshalledEvent(event string, callback interface{}) error {
-	return c.OnEvent(event, callback)
-}
-
 func (c *ServiceClient) Call(method string, args interface{}, reply interface{}, timeout time.Duration) error {
 	return c.conn.rpc.CallWithTimeout(c.topic, method, args, reply, timeout)
 }
