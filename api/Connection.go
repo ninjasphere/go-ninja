@@ -172,12 +172,7 @@ func (c *Connection) Subscribe(topic string, callback interface{}) error {
 }
 
 func (c *Connection) SimplySubscribe(topic string, callback interface{}) error {
-	adapter, err := getAdapter(c.log, callback)
-	if err != nil {
-		c.log.Fatalf("failed to bind callback: %v", err)
-		return err
-	}
-	return c.Subscribe(topic, adapter)
+	return c.Subscribe(topic, callback)
 }
 
 // GetServiceClient returns an RPC client for the given service.
