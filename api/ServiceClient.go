@@ -20,7 +20,7 @@ type ServiceClient struct {
 //
 // YourEventType must either be *json.RawMessage or a pointer to go type to which the raw JSON message can successfully be unmarshalled.
 // 
-// There is one entry in the topicKeys map for each parameter marker in the topic string used to obtain the ServiceClient
+// There is one entry in the topicKeys map for each parameter marker in the topic string used to obtain the ServiceClient.
 //
 // Both the params and topicKeys parameters can be omitted. If the topicKeys parameter is required, the params parameter must also be specified.
 //
