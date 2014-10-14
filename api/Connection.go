@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -147,6 +148,15 @@ func (c *Connection) Subscribe(topic string, callback func(params *json.RawMessa
 
 	<-receipt
 	return nil
+}
+
+func (c *Connection) SimplySubscribe(topic string, callback interface{}) error {
+	adapter, err := newAdapter(c.log, callback)
+	if err != nil {
+		c.log.Fatalf("failed to bind callback: %v", err)
+		return err
+	}
+	return c.Subscribe(topic, adapter.invoke)
 }
 
 // GetServiceClient returns an RPC client for the given service.
@@ -354,4 +364,87 @@ func resolveSchemaURIWithBase(base *url.URL, uri string) string {
 		log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
 	}
 	return base.ResolveReference(u).String()
+}
+
+// support for reflective callbacks, modelled on approach used in rpc/server.go
+
+type adapter struct {
+	log      *logger.Logger
+	function reflect.Value
+	argCount int
+	argType  reflect.Type
+}
+
+func (self *adapter) invoke(params *json.RawMessage, values map[string]string) bool {
+	// self.log.Debugf("invoke: params=%s, values=%v", string(*params), values)
+	var args []reflect.Value = make([]reflect.Value, self.argCount)
+
+	switch self.argCount {
+	case 2:
+		args[1] = reflect.ValueOf(values)
+		fallthrough
+	case 1:
+		arg := reflect.New(self.argType.Elem())
+		err := json.Unmarshal(*params, arg.Interface())
+		if err != nil {
+			self.log.Errorf("failed to unmarshal %s as %v because %v", string(*params), arg, err)
+			return true
+		}
+		args[0] = arg
+	case 0:
+	}
+	return self.function.Call(args)[0].Interface().(bool)
+}
+
+func newAdapter(log *logger.Logger, callback interface{}) (*adapter, error) {
+	var err error = nil
+
+	value := reflect.ValueOf(callback)
+	kind := value.Kind()
+	if kind != reflect.Func {
+		return nil, fmt.Errorf("%v is if kind %d, not of kind Func", callback, kind)
+	}
+
+	numIn := value.Type().NumIn()
+
+	var argType reflect.Type = nil
+	empty := make(map[string]string)
+
+	switch numIn {
+	case 2:
+		valuesType := value.Type().In(1)
+		if reflect.ValueOf(empty).Type() != valuesType {
+			return nil, fmt.Errorf("second parameter, if specified must be of type map[string]string, is actually of type %v", valuesType)
+		}
+		fallthrough
+	case 1:
+		argType = value.Type().In(0)
+		argKind := argType.Kind()
+		if argKind != reflect.Ptr {
+			return nil, fmt.Errorf("type of first parameter %v must be of type Ptr, is actually of kind %d", argType, argKind)
+		}
+	case 0:
+	default:
+		return nil, fmt.Errorf("callback %v has too many (%d) parameters", callback, numIn)
+	}
+
+	numOut := value.Type().NumOut()
+	if numOut != 1 {
+		return nil, fmt.Errorf("return type of %v has the wrong number (%d) of arguments", value, numOut)
+	}
+
+	if value.Type().Out(0) != reflect.ValueOf(true).Type() {
+		return nil, fmt.Errorf("return type of %v must be of type bool", value)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &adapter{
+		log:      log,
+		function: value,
+		argCount: numIn,
+		argType:  argType,
+	}, err
 }
