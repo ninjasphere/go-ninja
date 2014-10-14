@@ -19,6 +19,12 @@ import (
 	"github.com/ninjasphere/go-ninja/rpc/json2"
 )
 
+var (
+	dummyRawCallback = func(params *json.RawMessage, values map[string]string) bool {
+		return false
+	}
+)
+
 // Connection Holds the connection to the Ninja MQTT bus, and provides all the methods needed to communicate with
 // the other modules in Sphere.
 type Connection struct {
@@ -401,6 +407,11 @@ func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.Raw
 
 	value := reflect.ValueOf(callback)
 	valueType := value.Type()
+
+	if (valueType == reflect.ValueOf(dummyRawCallback).Type()) {
+		return callback.(func(params *json.RawMessage, values map[string]string) bool), nil
+	}
+
 	kind := value.Kind()
 	if kind != reflect.Func {
 		return nil, fmt.Errorf("%v is if kind %d, not of kind Func", callback, kind)
