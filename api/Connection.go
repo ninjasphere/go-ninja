@@ -400,25 +400,26 @@ func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.Raw
 	var err error = nil
 
 	value := reflect.ValueOf(callback)
+	valueType := value.Type()
 	kind := value.Kind()
 	if kind != reflect.Func {
 		return nil, fmt.Errorf("%v is if kind %d, not of kind Func", callback, kind)
 	}
 
-	numIn := value.Type().NumIn()
+	numIn := valueType.NumIn()
 
 	var argType reflect.Type = nil
 	empty := make(map[string]string)
 
 	switch numIn {
 	case 2:
-		valuesType := value.Type().In(1)
+		valuesType := valueType.In(1)
 		if reflect.ValueOf(empty).Type() != valuesType {
 			return nil, fmt.Errorf("second parameter, if specified must be of type map[string]string, is actually of type %v", valuesType)
 		}
 		fallthrough
 	case 1:
-		argType = value.Type().In(0)
+		argType = valueType.In(0)
 		argKind := argType.Kind()
 		if argKind != reflect.Ptr {
 			return nil, fmt.Errorf("type of first parameter %v must be of type Ptr, is actually of kind %d", argType, argKind)
@@ -428,12 +429,12 @@ func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.Raw
 		return nil, fmt.Errorf("callback %v has too many (%d) parameters", callback, numIn)
 	}
 
-	numOut := value.Type().NumOut()
+	numOut := valueType.NumOut()
 	if numOut != 1 {
 		return nil, fmt.Errorf("return type of %v has the wrong number (%d) of arguments", value, numOut)
 	}
 
-	if value.Type().Out(0) != reflect.ValueOf(true).Type() {
+	if valueType.Out(0) != reflect.ValueOf(true).Type() {
 		return nil, fmt.Errorf("return type of %v must be of type bool", value)
 	}
 
