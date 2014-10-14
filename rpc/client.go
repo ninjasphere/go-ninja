@@ -65,38 +65,42 @@ func (client *Client) send(call *Call) error {
 		return err
 	}
 
-	replyTopic := call.Topic + "/reply"
+	if call.Done != nil {
+		replyTopic := call.Topic + "/reply"
 
-	if !client.subscribed[replyTopic] {
+		if !client.subscribed[replyTopic] {
 
-		log.Debugf("Subscribing to %s", replyTopic)
+			log.Debugf("Subscribing to %s", replyTopic)
 
-		filter, err := mqtt.NewTopicFilter(replyTopic, 0)
-		if err != nil {
-			return err
+			filter, err := mqtt.NewTopicFilter(replyTopic, 0)
+			if err != nil {
+				return err
+			}
+
+			receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
+				log.Debugf("< Incoming to %s : %s", message.Topic(), message.Payload())
+				go client.handleResponse(message)
+			}, filter)
+
+			if err != nil {
+				return err
+			}
+
+			client.subscribed[replyTopic] = true
+
+			<-receipt
 		}
-
-		receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
-			log.Debugf("< Incoming to %s : %s", message.Topic(), message.Payload())
-			go client.handleResponse(message)
-		}, filter)
-
-		if err != nil {
-			return err
-		}
-
-		client.subscribed[replyTopic] = true
-
-		<-receipt
 	}
 
 	log.Debugf("< Outgoing to %s : %s", call.Topic, payload)
 
 	pubReceipt := client.mqtt.Publish(mqtt.QoS(0), call.Topic, payload)
 
-	<-pubReceipt
+	if call.Done != nil {
+		<-pubReceipt
 
-	client.pending[call.ID] = call
+		client.pending[call.ID] = call
+	}
 
 	return nil
 }
@@ -145,6 +149,18 @@ func (call *Call) done() {
 		log.Infof("Discarding Call reply due to insufficient Done chan capacity")
 	}
 
+}
+
+// Call invokes a function asynchronously.
+func (client *Client) Call(topic string, serviceMethod string, args interface{}) error {
+	call := &Call{
+		ID:            rand.Uint32(),
+		Topic:         topic,
+		ServiceMethod: serviceMethod,
+		Args:          args,
+	}
+
+	return client.send(call)
 }
 
 // CallWithTimeout invokes a function synchronously.

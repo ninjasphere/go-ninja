@@ -29,5 +29,9 @@ func (c *ServiceClient) OnEvent(event string, callback interface{}) error {
 }
 
 func (c *ServiceClient) Call(method string, args interface{}, reply interface{}, timeout time.Duration) error {
-	return c.conn.rpc.CallWithTimeout(c.topic, method, args, reply, timeout)
+	if timeout > 0 {
+		return c.conn.rpc.CallWithTimeout(c.topic, method, args, reply, timeout)
+	}
+
+	return c.conn.rpc.Call(c.topic, method, args)
 }
