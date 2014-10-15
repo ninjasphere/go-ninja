@@ -52,7 +52,7 @@ type Channel interface {
 // Connect Builds a new ninja connection to the MQTT broker, using the given client ID
 func Connect(clientID string) (*Connection, error) {
 
-	log := logger.GetLogger("connection")
+	log := logger.GetLogger(clientID+".connection")
 
 	conn := Connection{log: log}
 
@@ -92,7 +92,7 @@ type rpcMessage struct {
 }
 
 // Subscribe allows you to subscribe to an MQTT topic. Topics can contain variables of the form ":myvar" which will
-// be returned in the values map in the callback. 
+// be returned in the values map in the callback.
 //
 // The provided callback must be a function of 0, 1 or 2 parameters which returns
 // "true" if it wants to receive more messages.
