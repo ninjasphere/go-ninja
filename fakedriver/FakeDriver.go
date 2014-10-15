@@ -49,12 +49,12 @@ func NewFakeDriver() (*FakeDriver, error) {
 		log.Fatalf("Failed to initialize fake driver: %s", err)
 	}
 
-	err = driver.Export()
+	err = driver.Export(driver)
 	if err != nil {
 		log.Fatalf("Failed to export fake driver: %s", err)
 	}
 
-	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
+	userAgent := driver.Conn.GetServiceClient("$device/:deviceId/channel/user-agent")
 	userAgent.OnEvent("pairing-requested", driver.OnPairingRequest)
 
 	return driver, nil
