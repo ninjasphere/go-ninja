@@ -189,7 +189,6 @@ func (s *Server) serveRequest(topic string, message mqtt.Message) {
 		if methodSpec.argsType.Kind() == reflect.Ptr {
 			args = reflect.New(methodSpec.argsType.Elem())
 		} else {
-			log.Infof("We don't want a pointer")
 			args = reflect.New(methodSpec.argsType)
 		}
 
