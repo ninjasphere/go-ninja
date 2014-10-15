@@ -3,7 +3,6 @@ package ninja
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"reflect"
 	"strings"
@@ -242,7 +241,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().ID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema:           resolveProtocolURI(channel.GetProtocol()),
+		Schema:           c.resolveProtocolURI(channel.GetProtocol()),
 		SupportedMethods: supportedMethods,
 		SupportedEvents:  supportedEvents,
 	}
@@ -256,12 +255,12 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	// <TEMPORARY> - Expose channels using the old topic (with the protocol)
 	/*properAnnouncement := announcement.ServiceAnnouncement
 
-	shortProtocol := strings.TrimPrefix(resolveProtocolURI(channel.GetProtocol()), protocolSchemaURL.String())
+	shortProtocol := strings.TrimPrefix(c.resolveProtocolURI(channel.GetProtocol()), protocolSchemaURL.String())
 	oldTopic := fmt.Sprintf("$device/%s/channel/%s/%s", device.GetDeviceInfo().ID, id, shortProtocol)
 
 	deprecated := true
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema:           resolveProtocolURI(channel.GetProtocol()),
+		Schema:           c.resolveProtocolURI(channel.GetProtocol()),
 		SupportedMethods: supportedMethods,
 		SupportedEvents:  supportedEvents,
 		Deprecated:       &deprecated,
@@ -291,7 +290,7 @@ func (s *simpleService) GetServiceAnnouncement() *model.ServiceAnnouncement {
 func (c *Connection) MustExportService(service interface{}, topic string, announcement *model.ServiceAnnouncement) *rpc.ExportedService {
 	exported, err := c.exportService(service, topic, &simpleService{*announcement})
 	if err != nil {
-		log.Fatalf("Failed to export service on topic '%s': %s", topic, err)
+		c.log.Fatalf("Failed to export service on topic '%s': %s", topic, err)
 	}
 	return exported
 }
@@ -361,19 +360,19 @@ func (c *Connection) SendNotification(topic string, params ...interface{}) error
 var rootSchemaURL, _ = url.Parse("http://schema.ninjablocks.com")
 var protocolSchemaURL, _ = url.Parse("http://schema.ninjablocks.com/protocol/")
 
-func resolveSchemaURI(uri string) string {
-	return resolveSchemaURIWithBase(rootSchemaURL, uri)
+func (c *Connection) resolveSchemaURI(uri string) string {
+	return c.resolveSchemaURIWithBase(rootSchemaURL, uri)
 }
 
-func resolveProtocolURI(uri string) string {
-	return resolveSchemaURIWithBase(protocolSchemaURL, uri)
+func (c *Connection) resolveProtocolURI(uri string) string {
+	return c.resolveSchemaURIWithBase(protocolSchemaURL, uri)
 }
 
-func resolveSchemaURIWithBase(base *url.URL, uri string) string {
+func (c *Connection) resolveSchemaURIWithBase(base *url.URL, uri string) string {
 
 	u, err := url.Parse(uri)
 	if err != nil {
-		log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
+		c.log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
 	}
 	return base.ResolveReference(u).String()
 }
