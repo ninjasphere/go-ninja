@@ -24,8 +24,15 @@ func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
 	}, device}
 }
 
-func (c *VolumeChannel) Set(state *float64) error {
-	return c.device.SetVolume(*state)
+func (c *VolumeChannel) Set(state *VolumeState) error {
+	var err error
+	if c.device.SetVolume != nil && state.Level != nil {
+		err = c.device.SetVolume(*state.Level)
+	}
+	if c.device.SetMuted != nil && state.Muted != nil {
+		err = c.device.SetMuted(*state.Muted)
+	}
+	return err
 }
 
 func (c *VolumeChannel) VolumeUp() error {
