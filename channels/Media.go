@@ -97,6 +97,8 @@ func (c *MediaChannel) SendGenericState(state *GenericMediaItem) error {
 }
 
 func (c *MediaChannel) SendMusicTrackState(state *MusicTrackMediaItem, position *int) error {
-	state.Type = "music-track"
+	if state != nil {
+		state.Type = "music-track"
+	}
 	return c.SendEvent("state", &MusicTrackMediaState{state, position})
 }
