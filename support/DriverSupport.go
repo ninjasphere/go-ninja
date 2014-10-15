@@ -44,9 +44,15 @@ func (self *DriverSupport) Init(info *model.Module) error {
 // Export the driver to the local MQTT bus. After this call complete's the driver's Start method
 // will be called, if implemented.
 //
-// This call is equivalent to self.Conn.ExportDriver(self).
-func (self *DriverSupport) Export() error {
-	return self.Conn.ExportDriver(self)
+// The methods parameter is a reference to the full interface of the driver which implements any
+// optional driver methods (such as Start and Stop) not implemented by the DriverSupport interface.
+// If you do not specify this interface during the export, those methods will not be exposed
+// to the RPC subsystem and so will not be called.
+func (self *DriverSupport) Export(methods ninja.Driver) error {
+     if methods == nil {
+		methods = self
+     }
+     return self.Conn.ExportDriver(methods)
 }
 
 // Return the module info that describes the driver.
