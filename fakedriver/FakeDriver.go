@@ -7,7 +7,7 @@ import (
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/events"
-	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/go-ninja/support"
 )
 
 var info = ninja.LoadModuleInfo("./package.json")
@@ -22,10 +22,8 @@ var info = ninja.LoadModuleInfo("./package.json")
 }*/
 
 type FakeDriver struct {
-	config    *FakeDriverConfig
-	conn      *ninja.Connection
-	userAgent *ninja.ServiceClient
-	sendEvent func(event string, payload interface{}) error
+	support.DriverSupport
+	config *FakeDriverConfig
 }
 
 type FakeDriverConfig struct {
@@ -44,30 +42,19 @@ func defaultConfig() *FakeDriverConfig {
 
 func NewFakeDriver() (*FakeDriver, error) {
 
-	conn, err := ninja.Connect("FakeDriver")
+	driver := &FakeDriver{}
 
+	err := driver.Init(info)
 	if err != nil {
-		log.Fatalf("Failed to create fake driver: %s", err)
+		log.Fatalf("Failed to initialize fake driver: %s", err)
 	}
 
-	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
-
-	driver := &FakeDriver{
-		conn:      conn,
-		userAgent: userAgent,
-	}
-
-	err = conn.ExportDriver(driver)
-
+	err = driver.Export()
 	if err != nil {
 		log.Fatalf("Failed to export fake driver: %s", err)
 	}
 
-	/*go func() {
-		time.Sleep(time.Second)
-		driver.Start(nil, nil, nil)
-	}()*/
-
+	userAgent := conn.GetServiceClient("$device/:deviceId/channel/user-agent")
 	userAgent.OnEvent("pairing-requested", driver.OnPairingRequest)
 
 	return driver, nil
@@ -75,12 +62,12 @@ func NewFakeDriver() (*FakeDriver, error) {
 
 func (d *FakeDriver) OnPairingRequest(pairingRequest *events.PairingRequest, values map[string]string) bool {
 	log.Printf("Pairing request received from %s for %d seconds", values["deviceId"], pairingRequest.Duration)
-	d.sendEvent("pairing-started", &events.PairingStarted{
+	d.SendEvent("pairing-started", &events.PairingStarted{
 		Duration: pairingRequest.Duration,
 	})
 	go func() {
 		time.Sleep(time.Second * time.Duration(pairingRequest.Duration))
-		d.sendEvent("pairing-ended", &events.PairingStarted{
+		d.SendEvent("pairing-ended", &events.PairingStarted{
 			Duration: pairingRequest.Duration,
 		})
 	}()
@@ -99,22 +86,22 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 		log.Print("Creating new fake light")
 		device := NewFakeLight(d, i)
 
-		err := d.conn.ExportDevice(device)
+		err := d.Conn.ExportDevice(device)
 		if err != nil {
 			log.Fatalf("Failed to export fake light %d: %s", i, err)
 		}
 
-		err = d.conn.ExportChannel(device, device.onOffChannel, "on-off")
+		err = d.Conn.ExportChannel(device, device.onOffChannel, "on-off")
 		if err != nil {
 			log.Fatalf("Failed to export fake light on off channel %d: %s", i, err)
 		}
 
-		err = d.conn.ExportChannel(device, device.brightnessChannel, "brightness")
+		err = d.Conn.ExportChannel(device, device.brightnessChannel, "brightness")
 		if err != nil {
 			log.Fatalf("Failed to export fake light brightness channel %d: %s", i, err)
 		}
 
-		err = d.conn.ExportChannel(device, device.colorChannel, "color")
+		err = d.Conn.ExportChannel(device, device.colorChannel, "color")
 		if err != nil {
 			log.Fatalf("Failed to export fake color channel %d: %s", i, err)
 		}
@@ -125,13 +112,13 @@ func (d *FakeDriver) Start(config *FakeDriverConfig) error {
 
 	for i := 0; i < d.config.NumberOfMediaPlayers; i++ {
 		log.Print("Creating new fake media player")
-		_, err := NewFakeMediaPlayer(d, d.conn, i)
+		_, err := NewFakeMediaPlayer(d, d.Conn, i)
 		if err != nil {
 			log.Fatalf("failed to create fake media player")
 		}
 	}
 
-	return d.sendEvent("config", config)
+	return d.SendEvent("config", config)
 }
 
 func (d *FakeDriver) Stop() error {
@@ -153,12 +140,4 @@ func (d *FakeDriver) Blarg(in *In) (*Out, error) {
 		Name: in.Name,
 		Age:  30,
 	}, nil
-}
-
-func (d *FakeDriver) GetModuleInfo() *model.Module {
-	return info
-}
-
-func (d *FakeDriver) SetEventHandler(sendEvent func(event string, payload interface{}) error) {
-	d.sendEvent = sendEvent
 }
