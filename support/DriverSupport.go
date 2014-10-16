@@ -162,6 +162,7 @@ func (self *DriverSupport) SetLogLevel(level string) error {
 	parsed, ok := loggo.ParseLevel(level)
 	if ok && parsed != loggo.UNSPECIFIED {
 		loggo.GetLogger("").SetLogLevel(parsed)
+		safeLog(self, nil).Logf(parsed, "Log level has been reset to %s", level)
 		return nil
 	} else {
 		return fmt.Errorf("%s is not a valid logging level")
