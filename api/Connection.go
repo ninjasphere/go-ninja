@@ -52,7 +52,7 @@ type Channel interface {
 // Connect Builds a new ninja connection to the MQTT broker, using the given client ID
 func Connect(clientID string) (*Connection, error) {
 
-	log := logger.GetLogger(clientID+".connection")
+	log := logger.GetLogger(fmt.Sprintf("%s.connection", clientID))
 
 	conn := Connection{log: log}
 

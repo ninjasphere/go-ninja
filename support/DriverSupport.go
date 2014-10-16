@@ -35,7 +35,7 @@ type DriverSupport struct {
 // is used to acquire the driver's logger and MQTT connection.
 func (self *DriverSupport) Init(info *model.Module) error {
 	self.Info = info
-	self.Log = logger.GetLogger(self.Info.ID+".driver")
+	self.Log = logger.GetLogger(fmt.Sprintf("%s.driver", self.Info.ID))
 	conn, err := ninja.Connect(self.Info.ID)
 	self.Conn = conn
 	return err
