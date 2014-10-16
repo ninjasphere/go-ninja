@@ -1,6 +1,6 @@
 // The package is intended to provide objects used to build implementations of the Driver and Device interfaces
-// since there is typically only one possible implementation for many of these methods. This will help reduce
-// the amount of boiler plate that driver implementors will need to write in order to implement the required
+// since there is typically only one possible implementation for many of these methods. This reduces
+// the amount of boiler plate code that driver implementors need to write in order to implement the required
 // interfaces.
 package support
 
@@ -42,30 +42,44 @@ import (
 // 		if err != nil {
 // 			return err
 // 		}
+//
+//		// after this time, the framework will start calling methods on the driver.
+//
+//		return driver
 // 	}
 //
 // For another example of how to use this type, refer to the FakeDriver module of the github.com/ninjasphere/go-ninja/fakedriver package.
 //
 type DriverSupport struct {
-	Info        *model.Module
-	Log         *logger.Logger
-	Conn        *ninja.Connection
-	sender      func(event string, payload interface{}) error
-	initialized bool
+	Info   *model.Module
+	Log    *logger.Logger
+	Conn   *ninja.Connection
+	sender func(event string, payload interface{}) error
 }
 
-// This method is called to initialize the members of a DriverSupport object
-// and acquire a named connection to local message bus.
+// This method is called to initialize the Info, Log and Conn members
+// of the receiving DriverSupport object and to acquire a named
+// connection to the local message bus.
 //
-// This method initializes the following member variables: Info, Log and Conn.
+// Info is initialized with the supplied *model.Module argument
+// which must be non-nil and must have a non-empty ID whose value is
+// member referred to here as {id}.
 //
-// The logger will be named {id}.driver where id is the ID of the supplied Module model.
-// The Connection will be named {id}.
+// Log is initialized with a Logger member named "{id}.driver".
 //
-// If initialization was not successful an non-nil error will be returned.
+// Conn is initialized with the results of a call to ninja.Connect
+// passing {id} as the client id parameter.
+// This connection will log to "{id}.connection".
 //
-// self.Log will is guaranteed to be non-nil even if initialization fails, provided that
-// the receiver (self) is not null.
+// If initialization was not successful for any reason, either because
+// the supplied info object was incomplete or because the connection
+// attemped failed, the method will return a non-nil error object and
+// the receiver should not be used for any further operations.
+//
+// However, to avoid the need for the caller to acquire its own logging
+// object, and provided the receiver itself is not nil, the Log member of
+// the receiver will be initialized with a valid Logger even if initialization
+// itself fails.
 //
 func (self *DriverSupport) Init(info *model.Module) error {
 	log := safeLog(self, info)
@@ -84,25 +98,24 @@ func (self *DriverSupport) Init(info *model.Module) error {
 		return fmt.Errorf("invalid argument: info.ID == \"\"")
 	}
 
-	conn, err := ninja.Connect(info.ID)
-
 	self.Info = info
-	self.Conn = conn
 
-	self.initialized = (err == nil)
+	conn, err := ninja.Connect(info.ID)
+	self.Conn = conn
 
 	return err
 }
 
-// Export the driver to the local MQTT bus. After this call completes the driver's Start method
-// will be called, if it exists.
+// Export the driver to the local message bus. After this call completes the driver's Start method
+// , and other supported methods, will be called.
 //
 // The methods parameter is a reference to the full interface of the driver which implements any
 // optional driver methods (such as Start and Stop) not implemented by the DriverSupport interface.
 // If you do not specify this interface during the export, those methods will not be exposed
 // to the RPC subsystem and so will not be called.
 //
-// This method should not be called until Init is called.
+// This method should not be called until Init has been successfully called. Otherwise, it will
+// return a non-nil error.
 func (self *DriverSupport) Export(methods ninja.Driver) error {
 	err := failIfNotInitialized(self)
 	if err == nil {
@@ -112,12 +125,15 @@ func (self *DriverSupport) Export(methods ninja.Driver) error {
 	}
 }
 
-// Return the module info that describes the driver.
+// Return the module info that describes the driver. This will be nil unless the Init
+// method has been called.
 func (self *DriverSupport) GetModuleInfo() *model.Module {
 	return self.Info
 }
 
-// Sends an event on one of the driver's event topics.
+// This method can be used by the driver itself to emit a payload on one
+// of its own event topics. This method should not be called until both
+// the Init and Export methods have been called.
 func (self *DriverSupport) SendEvent(event string, payload interface{}) error {
 	err := failIfNotInitialized(self)
 	if err == nil {
@@ -131,8 +147,10 @@ func (self *DriverSupport) SendEvent(event string, payload interface{}) error {
 	}
 }
 
-// Configure the event sender. The event sender is used by the driver implementation
-// to emit events relating to the life cycle of driver itself.
+// This method is used to receive a reference to the event handler that the driver
+// should use to emit events. Consumers of the DriverSupport object should not
+// need to override this method, but should instead call SendEvent method as required
+// to make use of the handler.
 func (self *DriverSupport) SetEventHandler(handler func(event string, payload interface{}) error) {
 	// FIXME: this method should probably be renamed to SetEventSender.
 	self.sender = handler
@@ -152,8 +170,11 @@ func (self *DriverSupport) SetLogLevel(level string) error {
 
 // Return an error if the receiver has not been successfully initialized.
 func failIfNotInitialized(self *DriverSupport) error {
-	if self == nil || !self.initialized {
-		return fmt.Errorf("illegal state: driver has not been initialized")
+	if self == nil ||
+		self.Info == nil ||
+		self.Log == nil ||
+		self.Conn == nil {
+		return fmt.Errorf("illegal state: driver has not been successfully initialized")
 	} else {
 		return nil
 	}
