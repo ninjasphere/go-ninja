@@ -33,22 +33,6 @@ type Connection struct {
 	rpcServer *rpc.Server
 }
 
-type Driver interface {
-	GetModuleInfo() *model.Module
-	SetEventHandler(func(event string, payload interface{}) error)
-}
-
-type Device interface {
-	GetDriver() Driver
-	GetDeviceInfo() *model.Device
-	SetEventHandler(func(event string, payload interface{}) error)
-}
-
-type Channel interface {
-	GetProtocol() string
-	SetEventHandler(func(event string, payload interface{}) error)
-}
-
 // Connect Builds a new ninja connection to the MQTT broker, using the given client ID
 func Connect(clientID string) (*Connection, error) {
 
@@ -105,9 +89,9 @@ type rpcMessage struct {
 func (c *Connection) Subscribe(topic string, callback interface{}) error {
 
 	adapter, err := getAdapter(c.log, callback)
-	if (err != nil) {
-	   c.log.FatalError(err, fmt.Sprintf("Incompatible callback function provided as callback for topic %s", topic))
-	   return err
+	if err != nil {
+		c.log.FatalError(err, fmt.Sprintf("Incompatible callback function provided as callback for topic %s", topic))
+		return err
 	}
 
 	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
@@ -413,7 +397,7 @@ func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.Raw
 	value := reflect.ValueOf(callback)
 	valueType := value.Type()
 
-	if (valueType == reflect.ValueOf(dummyRawCallback).Type()) {
+	if valueType == reflect.ValueOf(dummyRawCallback).Type() {
 		return callback.(func(params *json.RawMessage, values map[string]string) bool), nil
 	}
 
