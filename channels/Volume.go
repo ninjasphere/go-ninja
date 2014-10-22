@@ -1,7 +1,7 @@
 package channels
 
 type VolumeDevice interface {
-	SetVolume(volume float64) error
+	SetVolume(volumeState *VolumeState) error
 	VolumeUp() error
 	VolumeDown() error
 	SetMuted(muted bool) error
@@ -25,14 +25,7 @@ func NewVolumeChannel(device VolumeDevice) *VolumeChannel {
 }
 
 func (c *VolumeChannel) Set(state *VolumeState) error {
-	var err error
-	if c.device.SetVolume != nil && state.Level != nil {
-		err = c.device.SetVolume(*state.Level)
-	}
-	if c.device.SetMuted != nil && state.Muted != nil {
-		err = c.device.SetMuted(*state.Muted)
-	}
-	return err
+	return c.device.SetVolume(state)
 }
 
 func (c *VolumeChannel) VolumeUp() error {
@@ -55,9 +48,6 @@ func (c *VolumeChannel) ToggleMuted() error {
 	return c.device.ToggleMuted()
 }
 
-func (c *VolumeChannel) SendState(level *float64, muted *bool) error {
-	return c.SendEvent("state", &VolumeState{
-		Level: level,
-		Muted: muted,
-	})
+func (c *VolumeChannel) SendState(state *VolumeState) error {
+	return c.SendEvent("state", state)
 }
