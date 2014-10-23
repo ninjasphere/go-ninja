@@ -27,3 +27,7 @@ func NewColorChannel(device ColorDevice) *ColorChannel {
 func (c *ColorChannel) Set(state *ColorState) error {
 	return c.device.SetColor(state)
 }
+
+func (c *ColorChannel) SendState(state *ColorState) error {
+	return c.SendEvent("state", state)
+}
