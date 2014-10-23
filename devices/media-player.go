@@ -17,11 +17,10 @@ type MediaPlayerDevice struct {
 	ApplyStop         func() error
 	ApplyPlaylistJump func(delta int) error
 
-	ApplyVolume      func(volume float64) error
-	ApplyMuted       func(muted bool) error
-	ApplyToggleMuted func() error
-	ApplyVolumeDown  func() error
+	ApplyVolume      func(state *channels.VolumeState) error
 	ApplyVolumeUp    func() error
+	ApplyVolumeDown  func() error
+	ApplyToggleMuted func() error
 
 	ApplyPlayURL func(url string, queue bool) error
 
@@ -46,38 +45,18 @@ func (d *MediaPlayerDevice) UpdateControlState(state channels.MediaControlEvent)
 	return nil
 }
 
-func (d *MediaPlayerDevice) UpdateVolumeState(state float64) error {
+func (d *MediaPlayerDevice) UpdateVolumeState(state *channels.VolumeState) error {
 	if d.volumeChannel == nil {
 		return fmt.Errorf("'volume' channel has not been enabled. Call EnableVolumeChannel() first")
 	}
 
-	d.volumeState = state
-	if d.ApplyMuted != nil {
-		d.volumeChannel.SendState(&state, &d.mutedState)
-	} else {
-		d.volumeChannel.SendState(&state, nil)
-	}
-
-	return nil
-}
-
-func (d *MediaPlayerDevice) UpdateMutedState(muted bool) error {
-	if d.volumeChannel == nil {
-		return fmt.Errorf("'volume' channel has not been enabled. Call EnableVolumeChannel() first")
-	}
-
-	d.mutedState = muted
-	if d.ApplyVolume != nil {
-		d.volumeChannel.SendState(&d.volumeState, &muted)
-	} else {
-		d.volumeChannel.SendState(nil, &muted)
-	}
+	d.volumeChannel.SendState(state)
 
 	return nil
 }
 
 func (d *MediaPlayerDevice) SetMuted(muted bool) error {
-	return d.ApplyMuted(muted)
+	return d.ApplyVolume(&channels.VolumeState{&d.volumeState, &muted})
 }
 
 func (d *MediaPlayerDevice) ToggleMuted() error {
@@ -89,7 +68,7 @@ func (d *MediaPlayerDevice) ToggleMuted() error {
 	return d.SetMuted(!d.mutedState)
 }
 
-func (d *MediaPlayerDevice) SetVolume(volume float64) error {
+func (d *MediaPlayerDevice) SetVolume(volume *channels.VolumeState) error {
 	return d.ApplyVolume(volume)
 }
 
@@ -101,7 +80,7 @@ func (d *MediaPlayerDevice) VolumeUp() error {
 	if vol > 1 {
 		vol = 1
 	}
-	return d.ApplyVolume(vol)
+	return d.ApplyVolume(&channels.VolumeState{Level: &vol})
 }
 
 func (d *MediaPlayerDevice) VolumeDown() error {
@@ -112,7 +91,7 @@ func (d *MediaPlayerDevice) VolumeDown() error {
 	if vol < 0 {
 		vol = 0
 	}
-	return d.ApplyVolume(vol)
+	return d.ApplyVolume(&channels.VolumeState{Level: &vol})
 }
 
 func (d *MediaPlayerDevice) TogglePlay() error {
@@ -194,7 +173,7 @@ func (d *MediaPlayerDevice) EnableControlChannel(supportedEvents []string) error
 	return nil
 }
 
-func (d *MediaPlayerDevice) EnableVolumeChannel() error {
+func (d *MediaPlayerDevice) EnableVolumeChannel(supportsMute bool) error {
 
 	d.volumeChannel = channels.NewVolumeChannel(d)
 
@@ -202,18 +181,13 @@ func (d *MediaPlayerDevice) EnableVolumeChannel() error {
 
 	if d.ApplyVolume != nil {
 		supportedMethods = append(supportedMethods, "set", "volumeUp", "volumeDown")
+		if supportsMute {
+			supportedMethods = append(supportedMethods, "mute", "unmute")
+		}
 	}
 
 	if d.ApplyToggleMuted != nil {
 		supportedMethods = append(supportedMethods, "toggleMute")
-	}
-
-	if d.ApplyMuted != nil {
-		supportedMethods = append(supportedMethods, "mute", "unmute")
-
-		if d.ApplyToggleMuted == nil {
-			supportedMethods = append(supportedMethods, "toggleMute")
-		}
 	}
 
 	supportedEvents := []string{"state"}

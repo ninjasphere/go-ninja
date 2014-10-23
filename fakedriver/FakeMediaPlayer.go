@@ -51,7 +51,6 @@ func (fake *fakeMediaPlayer) bindMethods() error {
 	fake.ninja.ApplyStop = fake.applyStop
 	fake.ninja.ApplyPlaylistJump = fake.applyPlaylistJump
 	fake.ninja.ApplyVolume = fake.applyVolume
-	fake.ninja.ApplyMuted = fake.applyMuted
 	fake.ninja.ApplyPlayURL = fake.applyPlayURL
 
 	err := fake.ninja.EnableControlChannel([]string{
@@ -64,7 +63,7 @@ func (fake *fakeMediaPlayer) bindMethods() error {
 		return err
 	}
 
-	err = fake.ninja.EnableVolumeChannel()
+	err = fake.ninja.EnableVolumeChannel(true)
 	if err != nil {
 		return err
 	}
@@ -99,15 +98,10 @@ func (fake *fakeMediaPlayer) applyPlaylistJump(delta int) error {
 	return nil
 }
 
-func (fake *fakeMediaPlayer) applyVolume(volume float64) error {
-	fake.ninja.Log().Infof("applyVolume called, volume %f", volume)
+func (fake *fakeMediaPlayer) applyVolume(state *channels.VolumeState) error {
+	fake.ninja.Log().Infof("applyVolume called, volume %v", state)
 
-	return fake.ninja.UpdateVolumeState(volume)
-}
-
-func (fake *fakeMediaPlayer) applyMuted(muted bool) error {
-	fake.ninja.Log().Infof("applyMuted called, volume %t", muted)
-	return fake.ninja.UpdateMutedState(muted)
+	return fake.ninja.UpdateVolumeState(state)
 }
 
 func (fake *fakeMediaPlayer) applyPlayURL(url string, queue bool) error {
