@@ -35,6 +35,12 @@ func String(def string, path ...string) string {
 	return cfg.GetPath(path...).MustString(def)
 }
 
+var hey = "what's up buddy?"
+
+func HasString(path ...string) bool {
+	return String(hey, path...) != hey
+}
+
 var serial string
 
 func Serial() string {
