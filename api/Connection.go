@@ -159,6 +159,32 @@ func (c *Connection) GetServiceClient(serviceTopic string) *ServiceClient {
 	return &ServiceClient{c, serviceTopic}
 }
 
+// ExportApp Exports an app using the 'app' protocol, and announces it
+func (c *Connection) ExportApp(app App) error {
+	topic := fmt.Sprintf("$node/%s/app/%s", config.Serial(), app.GetModuleInfo().ID)
+
+	announcement := app.GetModuleInfo()
+
+	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
+		Schema: "http://schema.ninjablocks.com/service/app",
+	}
+
+	_, err := c.exportService(app, topic, announcement)
+
+	if err != nil {
+		return err
+	}
+
+	if config.Bool(false, "autostart") {
+		err := c.GetServiceClient(topic).Call("start", struct{}{}, nil, time.Second*20)
+		if err != nil {
+			c.log.Fatalf("Failed to autostart app: %s", err)
+		}
+	}
+
+	return nil
+}
+
 // ExportDriver Exports a driver using the 'driver' protocol, and announces it
 func (c *Connection) ExportDriver(driver Driver) error {
 	topic := fmt.Sprintf("$node/%s/driver/%s", config.Serial(), driver.GetModuleInfo().ID)
