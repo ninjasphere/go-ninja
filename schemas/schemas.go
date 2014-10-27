@@ -1,150 +1,150 @@
 package schemas
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net"
+	"net/url"
 	"strings"
-	"sync"
-	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/gojsonschema"
+	"github.com/xeipuuv/gojsonreference"
 )
 
 var log = logger.GetLogger("schemas")
 
-/*
-func main() {
-	log.Println("Howdy!")
+var root = "http://schemas.ninjablocks.com/"
+var rootURL, _ = url.Parse(root)
+var filePrefix = config.MustString("installDirectory") + "/sphere-schemas/"
+var fileSuffix = ".json"
 
-	schema := `http://schema.ninjablocks.com/state/common#/definitions/humidity`
-	json := -10
+var schemaPool = gojsonschema.NewSchemaPool()
 
-	message, err := Validate(schema, json)
-	if err != nil {
-		log.Fatalf("Validation errored: %s", err)
-	}
-	if message != nil {
-		log.Fatalf("Validation failed: %s", *message)
-	}
-
-	log.Fatalf("Validation Passed")
-
-}*/
-
-type validatorConn struct {
-	conn net.Conn
-	sync.Mutex
-	io.Reader
-	io.Writer
-	bufio.Scanner
+func init() {
+	schemaPool.FilePrefix = &filePrefix
+	schemaPool.FileSuffix = &fileSuffix
 }
 
-// newCShim starts the shim named file using the provided args.
-func newValidatorConn(port int) (*validatorConn, error) {
-	c := new(validatorConn)
-	var err error
-
-	// TODO: Automatically redial
-	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, error) {
+	resolvedURL, err := resolveUrl(rootURL, documentURL)
 	if err != nil {
 		return nil, err
 	}
 
-	c.conn = conn
+	localURL := useLocalUrl(resolvedURL)
 
-	c.Writer = conn
-	c.Reader = conn
+	doc, err := schemaPool.GetDocument(localURL)
 
-	c.Mutex = sync.Mutex{}
-	c.Scanner = *bufio.NewScanner(c)
+	refUrl, _ := url.Parse(documentURL)
 
-	return c, err
-}
+	mapDoc := doc.Document.(map[string]interface{})
 
-var validator *validatorConn
-var validationEnabled = config.MustBool("validate")
+	document := doc.Document
 
-func init() {
-	connectToValidator()
-}
-
-func connectToValidator() {
-	if validator != nil {
-		validator.conn.Close()
+	if err == nil && refUrl.Fragment != "" {
+		// If we have a fragment, grab it.
+		document, _, err = resolvedURL.GetPointer().Get(document)
 	}
-	var err error
-	validator, err = newValidatorConn(8666)
+
 	if err != nil {
-		log.Fatalf("Failed to connect to validator server: %s", err)
+		return nil, err
 	}
+
+	mapDoc = document.(map[string]interface{})
+
+	if resolveRefs {
+		if ref, ok := mapDoc["$ref"]; ok && ref != "" {
+			log.Debugf("Got $ref: %s", ref)
+			var resolvedRef, err = resolveUrl(resolvedURL.GetUrl(), ref.(string))
+			log.Debugf("resolved %s to %s", ref.(string), resolvedRef.GetUrl().String())
+			if err != nil {
+				return nil, err
+			}
+			return GetDocument(resolvedRef.String(), true)
+		}
+	}
+
+	return mapDoc, nil
+}
+
+func GetSchema(documentURL string) (*gojsonschema.JsonSchemaDocument, error) {
+	resolved, err := resolveUrl(rootURL, documentURL)
+	if err != nil {
+		return nil, err
+	}
+	local := useLocalUrl(resolved)
+	return gojsonschema.NewJsonSchemaDocument(local.GetUrl().String(), schemaPool)
+}
+
+func useLocalUrl(ref gojsonreference.JsonReference) gojsonreference.JsonReference {
+	// Grab ninjablocks schemas locally
+
+	local := strings.Replace(ref.GetUrl().String(), root, "file:///", 1)
+	log.Infof("Fetching document from %s", local)
+	localURL, _ := gojsonreference.NewJsonReference(local)
+	return localURL
+}
+
+func resolveUrl(root *url.URL, documentURL string) (gojsonreference.JsonReference, error) {
+	ref, err := gojsonreference.NewJsonReference(documentURL)
+	if err != nil {
+		return ref, err
+	}
+	resolvedURL := root.ResolveReference(ref.GetUrl())
+
+	return gojsonreference.NewJsonReference(resolvedURL.String())
+}
+
+func main() {
+	spew.Dump(Validate("/protocol/humidity#/events/state/value", "hello"))
+	spew.Dump(Validate("protocol/humidity#/events/state/value", 10))
+
+	// TODO: FAIL! min/max not taken care of!
+	spew.Dump(Validate("/protocol/humidity#/events/state/value", -10))
+
+	spew.Dump(GetServiceMethods("/service/device"))
+
+	spew.Dump(GetDocument("/protocol/humidity#/events/state/value", true))
 }
 
 func Validate(schema string, obj interface{}) (*string, error) {
-	js, err := json.Marshal(obj)
+
+	log.Debugf("schema-validator: validating %s %v", schema, obj)
+
+	doc, err := GetSchema(schema)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get document: %s", err)
+	}
+
+	// Try to validate the Json against the schema
+	result := doc.Validate(obj)
+
+	messages := ""
+
+	// Deal with result
+	if !result.Valid() {
+		// Loop through errors
+		for _, desc := range result.Errors() {
+			messages += fmt.Sprintf("%s\n", desc)
+		}
+	}
+
+	return &messages, nil
+}
+
+func GetServiceMethods(service string) ([]string, error) {
+	doc, err := GetDocument(service+"#/methods", true)
+
 	if err != nil {
 		return nil, err
 	}
-	return ValidateString(schema, string(js))
-}
 
-func ValidateString(schema string, json string) (*string, error) {
-	if !validationEnabled {
-		log.Debugf("Skipping validation of %s", schema)
-		return nil, nil
+	methods := make([]string, 0, len(doc))
+	for method := range doc {
+		methods = append(methods, method)
 	}
 
-	validator.Lock()
-	defer validator.Unlock()
-
-	log.Debugf("Xschema-validator: validating %s %s", schema, json)
-
-	_, err := fmt.Fprintf(validator, "validate %s %s", schema, json)
-	if err != nil {
-		log.Infof("Validator errored. Will try to reconnect in a few seconds. Message:%s", err)
-		time.Sleep(time.Second * 3)
-		connectToValidator()
-		time.Sleep(time.Second * 5)
-		validator.Unlock()
-		return ValidateString(schema, json)
-	}
-
-	validator.Scan()
-
-	err = validator.Err()
-	result := validator.Text()
-
-	if result == "null" {
-		return nil, err
-	}
-
-	return &result, err
-}
-
-func GetServiceMethods(schema string) ([]string, error) {
-
-	validator.Lock()
-	defer validator.Unlock()
-
-	log.Debugf("schema-validator: Getting service methods for %s", schema)
-
-	_, err := fmt.Fprintf(validator, "methods %s", schema)
-	if err != nil {
-		log.Infof("Validator errored. Will try to reconnect in a few seconds. Message:%s", err)
-		time.Sleep(time.Second * 3)
-		connectToValidator()
-		time.Sleep(time.Second * 5)
-		validator.Unlock()
-		return GetServiceMethods(schema)
-	}
-
-	validator.Scan()
-
-	err = validator.Err()
-	result := validator.Text()
-
-	return strings.Split(result, ","), nil
+	return methods, nil
 }
