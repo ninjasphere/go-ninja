@@ -1,8 +1,6 @@
 package ninja
 
-import (
-	"github.com/ninjasphere/go-ninja/model"
-)
+import ()
 
 //
 // Driver implementors should provide an implementation of this interface.
@@ -16,18 +14,5 @@ import (
 // by including an anonymous struct member of type support.DriverSupport.
 //
 type Driver interface {
-	GetModuleInfo() *model.Module
-	SetEventHandler(func(event string, payload interface{}) error)
-}
-
-// A default implementation of this method is provided by support.DriverSupport.
-type LogControl interface {
-	// Sets the current log level for the driver process, specified as a string.
-	//
-	// This method is intended to called remotely in cases where it is necessary
-	// to adjust the logging levels in order to acquire additional diagnostic information
-	// from the driver
-	//
-	// Available logging levels are as per http://godoc.org/github.com/juju/loggo#Level
-	SetLogLevel(level string) error
+	Module
 }
