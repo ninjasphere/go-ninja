@@ -68,16 +68,18 @@ type ExportedService struct {
 
 func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 
-	schema := s.schema + "#/events/" + event + "/value"
-	message, err := schemas.Validate(schema, payload)
-
-	if err != nil {
-		return err
-	}
-
 	// We ignore announce events, as we don't define them in all the protocols/services
-	if message != nil && event != "announce" {
-		return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
+	if event != "announce" {
+		schema := s.schema + "#/events/" + event + "/value"
+		message, err := schemas.Validate(schema, payload)
+
+		if message != nil {
+			return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
+		}
+
+		if err != nil {
+			log.Warningf("Failed to validate event %s on service %s. Error:%s", event, s.schema, err)
+		}
 	}
 
 	return s.server.SendNotification(s.topic+"/event/"+event, payload)

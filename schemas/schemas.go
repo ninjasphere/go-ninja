@@ -14,7 +14,7 @@ import (
 
 var log = logger.GetLogger("schemas")
 
-var root = "http://schemas.ninjablocks.com/"
+var root = "http://schema.ninjablocks.com/"
 var rootURL, _ = url.Parse(root)
 var filePrefix = config.MustString("installDirectory") + "/sphere-schemas/"
 var fileSuffix = ".json"
@@ -35,6 +35,9 @@ func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, 
 	localURL := useLocalUrl(resolvedURL)
 
 	doc, err := schemaPool.GetDocument(localURL)
+	if err != nil {
+		return nil, err
+	}
 
 	refUrl, _ := url.Parse(documentURL)
 
@@ -68,13 +71,24 @@ func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, 
 	return mapDoc, nil
 }
 
+var schemasCache = make(map[string]*gojsonschema.JsonSchemaDocument)
+
 func GetSchema(documentURL string) (*gojsonschema.JsonSchemaDocument, error) {
+
 	resolved, err := resolveUrl(rootURL, documentURL)
 	if err != nil {
 		return nil, err
 	}
-	local := useLocalUrl(resolved)
-	return gojsonschema.NewJsonSchemaDocument(local.GetUrl().String(), schemaPool)
+	localRef := useLocalUrl(resolved)
+	local := localRef.GetUrl().String()
+
+	schema, ok := schemasCache[local]
+	if !ok {
+		log.Debugf("Cache miss on '%s'", resolved.GetUrl().String())
+		schema, err = gojsonschema.NewJsonSchemaDocument(local, schemaPool)
+		schemasCache[local] = schema
+	}
+	return schema, err
 }
 
 func useLocalUrl(ref gojsonreference.JsonReference) gojsonreference.JsonReference {
@@ -97,15 +111,15 @@ func resolveUrl(root *url.URL, documentURL string) (gojsonreference.JsonReferenc
 }
 
 func main() {
-	spew.Dump(Validate("/protocol/humidity#/events/state/value", "hello"))
-	spew.Dump(Validate("protocol/humidity#/events/state/value", 10))
+	//spew.Dump(Validate("/protocol/humidity#/events/state/value", "hello"))
+	//spew.Dump(Validate("protocol/humidity#/events/state/value", 10))
 
 	// TODO: FAIL! min/max not taken care of!
-	spew.Dump(Validate("/protocol/humidity#/events/state/value", -10))
+	//spew.Dump(Validate("/protocol/humidity#/events/state/value", -10))
 
-	spew.Dump(GetServiceMethods("/service/device"))
+	spew.Dump(GetServiceMethods("/protocol/power"))
 
-	spew.Dump(GetDocument("/protocol/humidity#/events/state/value", true))
+	//GetSchema("/model/device")
 }
 
 func Validate(schema string, obj interface{}) (*string, error) {
@@ -137,7 +151,7 @@ func Validate(schema string, obj interface{}) (*string, error) {
 func GetServiceMethods(service string) ([]string, error) {
 	doc, err := GetDocument(service+"#/methods", true)
 
-	if err != nil {
+	if err != nil && fmt.Sprintf("%s", err) != "Object has no key 'methods'" {
 		return nil, err
 	}
 
