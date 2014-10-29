@@ -4,11 +4,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net"
-	"strings"
 
 	"github.com/ninjasphere/go-ninja/model"
 )
@@ -39,34 +38,38 @@ func LoadModuleInfo(filename string) *model.Module {
 }
 
 func GetNetAddress() (string, error) {
-	var ipAddr string
-
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		fmt.Errorf("Failed to get interfaces: %s", err)
 		return "", err
 	}
-
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue // interface down
+		}
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue // loopback interface
+		}
+		addrs, err := iface.Addrs()
 		if err != nil {
-			fmt.Errorf("Failed to get addresses: %s", err)
 			return "", err
 		}
 		for _, addr := range addrs {
+			var ip net.IP
 			switch v := addr.(type) {
 			case *net.IPNet:
-				if addr.String() != "127.0.0.1/8" && addr.String() != "::1/128" {
-					rawAddy := addr.String()
-					ipAddr = strings.Split(rawAddy, "/")[0]
-				}
-			default:
-				fmt.Printf("unexpected type %T", v) // %T prints whatever type t has
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
 			}
-
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not an ipv4 address
+			}
+			return ip.String(), nil
 		}
 	}
-
-	return ipAddr, nil
-
+	return "", errors.New("are you connected to the network?")
 }
