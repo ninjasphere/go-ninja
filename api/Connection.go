@@ -161,6 +161,10 @@ func (c *Connection) GetServiceClient(serviceTopic string) *ServiceClient {
 
 // ExportApp Exports an app using the 'app' protocol, and announces it
 func (c *Connection) ExportApp(app App) error {
+
+	if app.GetModuleInfo().ID == "" {
+		panic("You must provide an ID in the package.json")
+	}
 	topic := fmt.Sprintf("$node/%s/app/%s", config.Serial(), app.GetModuleInfo().ID)
 
 	announcement := app.GetModuleInfo()
