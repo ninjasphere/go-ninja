@@ -2,6 +2,8 @@ package logger
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/bugsnag/bugsnag-go"
@@ -31,6 +33,9 @@ func GetLogger(name string) *Logger {
 
 	// are we in a terminal?
 	if !IsTerminal() {
+
+		// kill output from std logger
+		log.SetOutput(ioutil.Discard)
 
 		// we need to use a different writer
 		loggo.RemoveWriter("default")
