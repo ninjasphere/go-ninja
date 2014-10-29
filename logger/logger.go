@@ -6,9 +6,11 @@ import (
 
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
+	"github.com/wolfeidau/loggo-syslog"
 )
 
 func init() {
+
 	if os.Getenv("DEBUG") != "" {
 		// set the default logger to info
 		loggo.GetLogger("").SetLogLevel(loggo.DEBUG)
@@ -26,6 +28,17 @@ type Logger struct {
 // GetLogger builds a ninja logger with the given name
 func GetLogger(name string) *Logger {
 	l := loggo.GetLogger(name)
+
+	// are we in a terminal?
+	if !IsTerminal() {
+
+		// we need to use a different writer
+		loggo.RemoveWriter("default")
+
+		// setup the syslog writer as the default passing the
+		loggo.RegisterWriter("default", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, "ninja"), loggo.TRACE)
+	}
+
 	return &Logger{l}
 }
 
