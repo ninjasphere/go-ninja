@@ -35,6 +35,7 @@ func GetLogger(name string) *Logger {
 	if !IsTerminal() {
 
 		// kill output from std logger
+		// FIX: This is really good and bad, we should review this at a later date once we have time..
 		log.SetOutput(ioutil.Discard)
 
 		// we need to use a different writer
