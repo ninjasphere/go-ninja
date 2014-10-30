@@ -11,17 +11,6 @@ import (
 	"github.com/wolfeidau/loggo-syslog"
 )
 
-func init() {
-
-	if os.Getenv("DEBUG") != "" {
-		// set the default logger to info
-		loggo.GetLogger("").SetLogLevel(loggo.DEBUG)
-	} else {
-		// set the default logger to info
-		loggo.GetLogger("").SetLogLevel(loggo.INFO)
-	}
-}
-
 // Logger wrapper for the internal logger with some extra helpers
 type Logger struct {
 	loggo.Logger
@@ -29,6 +18,17 @@ type Logger struct {
 
 // GetLogger builds a ninja logger with the given name
 func GetLogger(name string) *Logger {
+
+	// if we are setting or configuring the ROOT logger
+	if name == "" {
+		// check for the magic DEBUG env variable.
+		if os.Getenv("DEBUG") != "" {
+			// set the default logger to debug
+			loggo.GetLogger("").SetLogLevel(loggo.DEBUG)
+			loggo.GetLogger("").Infof("enabling DEBUG")
+		}
+	}
+
 	l := loggo.GetLogger(name)
 
 	// are we in a terminal?
