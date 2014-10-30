@@ -22,13 +22,22 @@ var filePrefix = config.MustString("installDirectory") + "/sphere-schemas/"
 var fileSuffix = ".json"
 
 var schemaPool = gojsonschema.NewSchemaPool()
+var validationEnabled = config.Bool(false, "validate")
 
 func init() {
 	schemaPool.FilePrefix = &filePrefix
 	schemaPool.FileSuffix = &fileSuffix
+
+	if validationEnabled {
+		log.Infof("-------- VALIDATION ENABLED --------")
+	}
 }
 
 func Validate(schema string, obj interface{}) (*string, error) {
+
+	if !validationEnabled {
+		return nil, nil
+	}
 
 	jsonBytes, _ := json.Marshal(obj)
 	var jsonPayload interface{}
@@ -240,7 +249,7 @@ func useLocalUrl(ref gojsonreference.JsonReference) gojsonreference.JsonReferenc
 	// Grab ninjablocks schemas locally
 
 	local := strings.Replace(ref.GetUrl().String(), root, "file:///", 1)
-	log.Infof("Fetching document from %s", local)
+	log.Debugf("Fetching document from %s", local)
 	localURL, _ := gojsonreference.NewJsonReference(local)
 	return localURL
 }
