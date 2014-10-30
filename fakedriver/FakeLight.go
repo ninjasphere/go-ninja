@@ -5,6 +5,7 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
@@ -12,12 +13,13 @@ import (
 )
 
 type FakeLight struct {
-	driver            ninja.Driver
-	info              *model.Device
-	sendEvent         func(event string, payload interface{}) error
-	onOffChannel      *channels.OnOffChannel
-	brightnessChannel *channels.BrightnessChannel
-	colorChannel      *channels.ColorChannel
+	driver             ninja.Driver
+	info               *model.Device
+	sendEvent          func(event string, payload interface{}) error
+	onOffChannel       *channels.OnOffChannel
+	brightnessChannel  *channels.BrightnessChannel
+	colorChannel       *channels.ColorChannel
+	temperatureChannel *channels.TemperatureChannel
 }
 
 func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
@@ -41,6 +43,17 @@ func NewFakeLight(driver ninja.Driver, id int) *FakeLight {
 	light.onOffChannel = channels.NewOnOffChannel(light)
 	light.brightnessChannel = channels.NewBrightnessChannel(light)
 	light.colorChannel = channels.NewColorChannel(light)
+	light.temperatureChannel = channels.NewTemperatureChannel(light)
+
+	go func() {
+
+		var temp float64
+		for {
+			time.Sleep(5 * time.Second)
+			temp += 0.5
+			light.temperatureChannel.SendState(temp)
+		}
+	}()
 
 	return light
 }
