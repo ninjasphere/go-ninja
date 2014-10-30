@@ -30,7 +30,11 @@ func init() {
 
 func Validate(schema string, obj interface{}) (*string, error) {
 
-	log.Debugf("schema-validator: validating %s %v", schema, obj)
+	jsonBytes, _ := json.Marshal(obj)
+	var jsonPayload interface{}
+	_ = json.Unmarshal(jsonBytes, &jsonPayload)
+
+	log.Debugf("schema-validator: validating %s %s", schema, jsonBytes)
 
 	doc, err := GetSchema(schema)
 
@@ -39,19 +43,21 @@ func Validate(schema string, obj interface{}) (*string, error) {
 	}
 
 	// Try to validate the Json against the schema
-	result := doc.Validate(obj)
-
-	messages := ""
+	result := doc.Validate(jsonPayload)
 
 	// Deal with result
 	if !result.Valid() {
+		messages := ""
+
 		// Loop through errors
 		for _, desc := range result.Errors() {
 			messages += fmt.Sprintf("%s\n", desc)
 		}
+		return &messages, nil
+	} else {
+		return nil, nil
 	}
 
-	return &messages, nil
 }
 
 func GetServiceMethods(service string) ([]string, error) {
