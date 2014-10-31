@@ -52,10 +52,10 @@ type AppSupport struct {
 //
 // This method should not be called until Init has been successfully called. Otherwise, it will
 // return a non-nil error.
-func (self *AppSupport) Export(methods ninja.App) error {
-	err := failIfNotInitialized(&self.ModuleSupport)
+func (a *AppSupport) Export(methods ninja.App) error {
+	err := failIfNotInitialized(&a.ModuleSupport)
 	if err == nil {
-		return self.Conn.ExportApp(methods)
+		return a.Conn.ExportApp(methods)
 	} else {
 		return err
 	}

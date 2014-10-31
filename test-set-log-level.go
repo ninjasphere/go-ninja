@@ -2,26 +2,25 @@
 package main
 
 import (
-       "github.com/ninjasphere/go-ninja/support"
+	"github.com/ninjasphere/go-ninja/support"
 )
 
 type fixture struct {
-     support.DriverSupport
+	support.DriverSupport
 }
 
-func (self *fixture) logVarious(level string) {
-     self.SetLogLevel(level)
-     self.Log.Debugf("logging at debug while level is %s", level)
-     self.Log.Errorf("logging at error while level is %s", level)
-     self.Log.Infof("logging at info while level is %s", level)
-     self.Log.Warningf("logging at warning while level is %s", level)
+func (f *fixture) logVarious(level string) {
+	f.SetLogLevel(level)
+	f.Log.Debugf("logging at debug while level is %s", level)
+	f.Log.Errorf("logging at error while level is %s", level)
+	f.Log.Infof("logging at info while level is %s", level)
+	f.Log.Warningf("logging at warning while level is %s", level)
 }
-
 
 func main() {
 	obj := &fixture{}
 
-	err := obj.Init(nil);
+	err := obj.Init(nil)
 	_ = err
 
 	obj.logVarious("DEBUG")
