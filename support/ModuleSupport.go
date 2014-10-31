@@ -40,18 +40,18 @@ type ModuleSupport struct {
 // the receiver should not be used for any further operations.
 //
 // However, to avoid the need for the caller to acquire its own logging
-// object, and provided the receiver itself is not nil, the Log member of
+// object, and provided the receiver itm is not nil, the Log member of
 // the receiver will be initialized with a valid Logger even if initialization
-// itself fails.
+// itm fails.
 //
-func (self *ModuleSupport) Init(info *model.Module) error {
-	log := safeLog(self, info)
+func (m *ModuleSupport) Init(info *model.Module) error {
+	log := safeLog(m, info)
 
-	if self == nil {
+	if m == nil {
 		return fmt.Errorf("assertion failed: receiver != nil")
 	}
 
-	self.Log = log
+	m.Log = log
 
 	if info == nil {
 		return fmt.Errorf("invalid argument: info == nil")
@@ -61,28 +61,28 @@ func (self *ModuleSupport) Init(info *model.Module) error {
 		return fmt.Errorf("invalid argument: info.ID == \"\"")
 	}
 
-	self.Info = info
+	m.Info = info
 
 	conn, err := ninja.Connect(info.ID)
-	self.Conn = conn
+	m.Conn = conn
 
 	return err
 }
 
 // Return the module info that describes the module. This will be nil unless the Init
 // method has been called.
-func (self *ModuleSupport) GetModuleInfo() *model.Module {
-	return self.Info
+func (m *ModuleSupport) GetModuleInfo() *model.Module {
+	return m.Info
 }
 
-// This method can be used by the module itself to emit a payload on one
+// This method can be used by the module itm to emit a payload on one
 // of its own event topics. This method should not be called until both
 // the Init and Export methods have been called.
-func (self *ModuleSupport) SendEvent(event string, payload interface{}) error {
-	err := failIfNotInitialized(self)
+func (m *ModuleSupport) SendEvent(event string, payload interface{}) error {
+	err := failIfNotInitialized(m)
 	if err == nil {
-		if self.sender != nil {
-			return self.sender(event, payload)
+		if m.sender != nil {
+			return m.sender(event, payload)
 		} else {
 			return fmt.Errorf("illegal state: module has not been exported")
 		}
@@ -95,18 +95,18 @@ func (self *ModuleSupport) SendEvent(event string, payload interface{}) error {
 // should use to emit events. Consumers of the ModuleSupport object should not
 // need to override this method, but should instead call SendEvent method as required
 // to make use of the handler.
-func (self *ModuleSupport) SetEventHandler(handler func(event string, payload interface{}) error) {
+func (m *ModuleSupport) SetEventHandler(handler func(event string, payload interface{}) error) {
 	// FIXME: this method should probably be renamed to SetEventSender.
-	self.sender = handler
+	m.sender = handler
 }
 
 // Configure the og level of the root logger for the module's process.
-func (self *ModuleSupport) SetLogLevel(level string) error {
+func (m *ModuleSupport) SetLogLevel(level string) error {
 	// FIXME: maybe move this implementation into the logger package
 	parsed, ok := loggo.ParseLevel(level)
 	if ok && parsed != loggo.UNSPECIFIED {
 		loggo.GetLogger("").SetLogLevel(parsed)
-		safeLog(self, nil).Logf(parsed, "Log level has been reset to %s", level)
+		safeLog(m, nil).Logf(parsed, "Log level has been reset to %s", level)
 		return nil
 	} else {
 		return fmt.Errorf("%s is not a valid logging level")
@@ -114,11 +114,11 @@ func (self *ModuleSupport) SetLogLevel(level string) error {
 }
 
 // Return an error if the receiver has not been successfully initialized.
-func failIfNotInitialized(self *ModuleSupport) error {
-	if self == nil ||
-		self.Info == nil ||
-		self.Log == nil ||
-		self.Conn == nil {
+func failIfNotInitialized(m *ModuleSupport) error {
+	if m == nil ||
+		m.Info == nil ||
+		m.Log == nil ||
+		m.Conn == nil {
 		return fmt.Errorf("illegal state: module has not been successfully initialized")
 	} else {
 		return nil
@@ -138,10 +138,10 @@ func safeID(info *model.Module) string {
 // this function will always return a logger that can be used even if the
 // support object has not been initialized in the correct sequence or with
 // the correct arguments.
-func safeLog(self *ModuleSupport, info *model.Module) *logger.Logger {
-	if self == nil || self.Log == nil {
+func safeLog(m *ModuleSupport, info *model.Module) *logger.Logger {
+	if m == nil || m.Log == nil {
 		return logger.GetLogger(fmt.Sprintf("%s.module", safeID(info)))
 	} else {
-		return self.Log
+		return m.Log
 	}
 }
