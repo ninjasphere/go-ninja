@@ -50,7 +50,7 @@ var serial string
 
 func Serial() string {
 	if serial == "" {
-		cmd := exec.Command("sphere-serial")
+		cmd := exec.Command("sphere-serial", os.Args[1:]...)
 
 		var out bytes.Buffer
 		cmd.Stdout = &out
