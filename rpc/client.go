@@ -178,15 +178,17 @@ func (client *Client) CallWithTimeout(topic string, serviceMethod string, args i
 	if err != nil {
 		return err
 	}
+	sentTime := time.Now()
 
-	log.Infof("Waiting for reply...")
+	log.Debugf("id:%d -  Waiting for reply", call.ID)
 
 	select {
 	case <-call.Done:
+		log.Debugf("id:%d - Returned after %s", call.ID, time.Since(sentTime))
 		return call.Error
 	case <-time.After(timeout):
 		delete(client.pending, call.ID)
-		return fmt.Errorf("Call to service %s - (method: %s) timed out after %d seconds", topic, serviceMethod, timeout/time.Second)
+		return fmt.Errorf("id:%d - Call to service %s - (method: %s) timed out after %d seconds", call.ID, topic, serviceMethod, timeout/time.Second)
 	}
 
 }
