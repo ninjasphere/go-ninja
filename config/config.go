@@ -13,7 +13,12 @@ var cfg *simplejson.Json
 
 // MustString returns the string property at the path
 func MustString(path ...string) string {
-	return cfg.GetPath(path...).MustString()
+	nonce := "$splinereticulationid$"
+	val := cfg.GetPath(path...).MustString(nonce)
+	if val == nonce {
+		log.Fatalf("expected value for %v but found nothing", path)
+	}
+	return val
 }
 
 // MustInt returns the string property at the path
