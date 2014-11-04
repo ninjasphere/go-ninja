@@ -71,8 +71,8 @@ func Serial() string {
 	return serial
 }
 
-// MustLoadConfig parses the output of "sphere-config"
-func init() {
+// MustRefresh parses the output of "sphere-config"
+func MustRefresh() {
 	cmd := exec.Command("sphere-config", os.Args[1:]...)
 
 	var out bytes.Buffer
@@ -87,5 +87,8 @@ func init() {
 	if err != nil {
 		log.Fatalf("Failed to parse configuration. error:%s", err)
 	}
+}
 
+func init() {
+	MustRefresh()
 }
