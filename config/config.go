@@ -31,6 +31,11 @@ func Bool(def bool, path ...string) bool {
 	return cfg.GetPath(path...).MustBool(def)
 }
 
+// Int returns the integer property at the path, with a default
+func Int(def int, path ...string) int {
+	return cfg.GetPath(path...).MustInt(def)
+}
+
 func String(def string, path ...string) string {
 	return cfg.GetPath(path...).MustString(def)
 }
@@ -45,7 +50,7 @@ var serial string
 
 func Serial() string {
 	if serial == "" {
-		cmd := exec.Command("sphere-serial")
+		cmd := exec.Command("sphere-serial", os.Args[1:]...)
 
 		var out bytes.Buffer
 		cmd.Stdout = &out

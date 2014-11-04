@@ -14,5 +14,5 @@ func WaitUntilSignal() {
 
 	// Block until a signal is received.
 	s := <-c
-	fmt.Println("Got signal:", s)
+	panic(fmt.Sprintf("killed by signal %v", s))
 }

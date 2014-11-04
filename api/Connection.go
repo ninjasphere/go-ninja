@@ -400,25 +400,25 @@ type adapter struct {
 	argType  reflect.Type
 }
 
-func (self *adapter) invoke(params *json.RawMessage, values map[string]string) bool {
+func (a *adapter) invoke(params *json.RawMessage, values map[string]string) bool {
 	// self.log.Debugf("invoke: params=%s, values=%v", string(*params), values)
-	var args []reflect.Value = make([]reflect.Value, self.argCount)
+	var args []reflect.Value = make([]reflect.Value, a.argCount)
 
-	switch self.argCount {
+	switch a.argCount {
 	case 2:
 		args[1] = reflect.ValueOf(values)
 		fallthrough
 	case 1:
-		arg := reflect.New(self.argType.Elem())
+		arg := reflect.New(a.argType.Elem())
 		err := json.Unmarshal(*params, arg.Interface())
 		if err != nil {
-			self.log.Errorf("failed to unmarshal %s as %v because %v", string(*params), arg, err)
+			a.log.Errorf("failed to unmarshal %s as %v because %v", string(*params), arg, err)
 			return true
 		}
 		args[0] = arg
 	case 0:
 	}
-	return self.function.Call(args)[0].Interface().(bool)
+	return a.function.Call(args)[0].Interface().(bool)
 }
 
 func getAdapter(log *logger.Logger, callback interface{}) (func(params *json.RawMessage, values map[string]string) bool, error) {
