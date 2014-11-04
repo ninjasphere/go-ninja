@@ -38,7 +38,7 @@ func (c *LightBatchChannel) SetBatch(state *LightDeviceState) error {
 }
 
 func (c *LightBatchChannel) GetProtocol() string {
-	return "core.batching"
+	return "core/batching"
 }
 
 func (c *LightBatchChannel) SetEventHandler(_ func(event string, payload interface{}) error) {
