@@ -87,6 +87,14 @@ type rpcMessage struct {
 // The second parameter should be of type map[string]string and will contain one value for each place holder
 // specified in the topic string.
 func (c *Connection) Subscribe(topic string, callback interface{}) error {
+	return c.subscribe(true, topic, callback)
+}
+
+func (c *Connection) SubscribeRaw(topic string, callback interface{}) error {
+	return c.subscribe(false, topic, callback)
+}
+
+func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) error {
 
 	adapter, err := getAdapter(c.log, callback)
 	if err != nil {
@@ -118,20 +126,29 @@ func (c *Connection) Subscribe(topic string, callback interface{}) error {
 			mutex.Unlock()
 		} else {
 
-			msg := &rpcMessage{}
-			err := json.Unmarshal(message.Payload(), msg)
-
-			if err != nil {
-				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
-				return
-			}
-
 			var params json.RawMessage
 
-			json2.ReadRPCParams(msg.Params, &params)
-			if err != nil {
-				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
-				return
+			if rpc {
+				msg := &rpcMessage{}
+				err := json.Unmarshal(message.Payload(), msg)
+
+				if err != nil {
+					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
+					return
+				}
+
+				json2.ReadRPCParams(msg.Params, &params)
+				if err != nil {
+					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
+					return
+				}
+			} else {
+				err := json.Unmarshal(message.Payload(), &params)
+
+				if err != nil {
+					c.log.Warningf("Failed to read parameters in call to %s - %v", message.Topic(), err)
+					return
+				}
 			}
 
 			// The callback needs to be run in a goroutine as blocking this thread prevents any other messages arriving
@@ -363,6 +380,23 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 	}
 
 	return exportedService, nil
+}
+
+// PublishRaw sends a simple message
+func (c *Connection) PublishRaw(topic string, payload ...interface{}) error {
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Failed to marshall mqtt message: %s", err)
+	}
+
+	c.mqtt.Publish(mqtt.QoS(0), topic, jsonPayload)
+
+	if err != nil {
+		return fmt.Errorf("Failed to write publish message to MQTT: %s", err)
+	}
+
+	return nil
 }
 
 // SendNotification Sends a simple json-rpc notification to a topic
