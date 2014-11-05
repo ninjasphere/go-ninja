@@ -3,9 +3,11 @@ package logger
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
+	"github.com/wolfeidau/loggo-syslog"
 )
 
 // Logger wrapper for the internal logger with some extra helpers
@@ -25,6 +27,8 @@ func init() {
 	if level != loggo.INFO {
 		loggo.GetLogger("").Infof("Root logger initialized at level %v", level)
 	}
+	// setup the syslog writer
+	loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
 }
 
 // GetLogger builds a ninja logger with the given name
