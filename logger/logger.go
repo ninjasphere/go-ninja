@@ -28,12 +28,6 @@ func init() {
 	if level != loggo.INFO {
 		loggo.GetLogger("").Infof("Root logger initialized at level %v", level)
 	}
-}
-
-// GetLogger builds a ninja logger with the given name
-func GetLogger(name string) *Logger {
-	l := loggo.GetLogger(name)
-
 	// are we in a terminal?
 	if !IsTerminal() {
 
@@ -45,9 +39,13 @@ func GetLogger(name string) *Logger {
 		loggo.RemoveWriter("default")
 
 		// setup the syslog writer as the default passing the
-		loggo.RegisterWriter("default", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, "ninja"), loggo.TRACE)
+		loggo.RegisterWriter("default", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, "ninja", "LOCAL7"), loggo.TRACE)
 	}
+}
 
+// GetLogger builds a ninja logger with the given name
+func GetLogger(name string) *Logger {
+	l := loggo.GetLogger(name)
 	return &Logger{l}
 }
 
