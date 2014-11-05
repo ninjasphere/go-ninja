@@ -2,9 +2,8 @@ package logger
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
+	"path"
 
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
@@ -28,19 +27,8 @@ func init() {
 	if level != loggo.INFO {
 		loggo.GetLogger("").Infof("Root logger initialized at level %v", level)
 	}
-	// are we in a terminal?
-	if !IsTerminal() {
-
-		// kill output from std logger
-		// FIX: This is really good and bad, we should review this at a later date once we have time..
-		log.SetOutput(ioutil.Discard)
-
-		// we need to use a different writer
-		loggo.RemoveWriter("default")
-
-		// setup the syslog writer as the default passing the
-		loggo.RegisterWriter("default", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, "ninja", "LOCAL7"), loggo.TRACE)
-	}
+	// setup the syslog writer
+	loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
 }
 
 // GetLogger builds a ninja logger with the given name
