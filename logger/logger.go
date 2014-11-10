@@ -2,6 +2,8 @@ package logger
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"path"
 
@@ -21,7 +23,14 @@ func init() {
 		// if the magic debug variable exists...
 		level = loggo.DEBUG
 	} else {
+		// set the default level
 		level = loggo.INFO
+
+		// kill stderr
+		log.SetOutput(ioutil.Discard)
+
+		// remove the default writer
+		loggo.RemoveWriter("default")
 	}
 	loggo.GetLogger("").SetLogLevel(level)
 	if level != loggo.INFO {
