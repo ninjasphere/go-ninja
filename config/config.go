@@ -62,6 +62,16 @@ func MustString(path ...string) string {
 	return mustGet(path...).(string)
 }
 
+// MustStringArray returns the string array property at the path
+func MustStringArray(path ...string) []string {
+	a := mustGet(path...).([]interface{})
+	b := make([]string, len(a))
+	for i := range a {
+		b[i] = a[i].(string)
+	}
+	return b
+}
+
 // Int returns the integer property at the path, with a default
 func Int(def int, path ...string) int {
 	val := get(path...)
