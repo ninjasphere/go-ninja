@@ -25,8 +25,12 @@ func init() {
 	MustRefresh()
 }
 
-func GetAll() map[string]interface{} {
-	return unflatten(config)
+func GetAll(flatten bool) map[string]interface{} {
+	if flatten {
+		return config
+	} else {
+		return unflatten(config)
+	}
 }
 
 var serial string
