@@ -1,6 +1,7 @@
 package channels
 
 type IdentifyDevice interface {
+	Identify() error
 }
 
 type IdentifyChannel struct {
@@ -16,4 +17,8 @@ func NewIdentifyChannel(device IdentifyDevice) *IdentifyChannel {
 
 func (c *IdentifyChannel) SendState(state float64) error {
 	return c.SendEvent("state", state)
+}
+
+func (c *IdentifyChannel) Identify() error {
+	return c.device.Identify()
 }
