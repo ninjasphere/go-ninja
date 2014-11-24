@@ -237,9 +237,7 @@ func addArgs(config map[string]interface{}) {
 				// It's an environment indicator... like --cloud-production
 			}
 
-			if _, ok := config[name]; !ok {
-				config[name] = value
-			}
+			config[name] = value
 		}
 
 	}
