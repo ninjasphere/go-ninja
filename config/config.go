@@ -225,7 +225,13 @@ func addArgs(config map[string]interface{}) {
 
 			next := parser.Peek()
 			if next.Type == kingpin.TokenArg {
-				value = next.Value
+				if next.Value == "false" {
+					value = false
+				} else if next.Value == "true" {
+					value = true
+				} else {
+					value = next.Value
+				}
 			} else {
 				value = true
 				// It's an environment indicator... like --cloud-production
