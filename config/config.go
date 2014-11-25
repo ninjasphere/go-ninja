@@ -172,6 +172,7 @@ func MustRefresh() {
 
 	// credentials file
 	addFile("/etc/opt/ninja/credentials.json", flat)
+	addFile("/data/etc/opt/ninja/credentials.json", flat)
 
 	// home directory environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {
