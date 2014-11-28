@@ -12,8 +12,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/schemas"
+	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 // ----------------------------------------------------------------------------

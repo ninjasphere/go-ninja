@@ -9,13 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-ninja/rpc"
 	"github.com/ninjasphere/go-ninja/rpc/json2"
+	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 var (

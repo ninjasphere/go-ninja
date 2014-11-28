@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 var null = json.RawMessage([]byte("null"))
