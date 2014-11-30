@@ -3,18 +3,19 @@ package ninja
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/go-ninja/rpc"
 	"github.com/ninjasphere/go-ninja/rpc/json2"
-	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 // Connection Holds the connection to the Ninja MQTT bus, and provides all the methods needed to communicate with
 // the other modules in Sphere.
 type Connection struct {
-	mqtt      *mqtt.MqttClient
+	mqtt      *bus.Bus
 	log       *logger.Logger
 	rpc       *rpc.Client
 	rpcServer *rpc.Server
@@ -39,16 +40,11 @@ func Connect(clientID string) (*Connection, error) {
 
 	conn := Connection{log: log}
 
-	mqttURL := fmt.Sprintf("tcp://%s:%d", config.MustString("mqtt", "host"), config.MustInt("mqtt", "port"))
+	mqttURL := fmt.Sprintf("%s:%d", config.MustString("mqtt", "host"), config.MustInt("mqtt", "port"))
 
 	log.Infof("Connecting to %s using cid:%s", mqttURL, clientID)
 
-	opts := mqtt.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true)
-	conn.mqtt = mqtt.NewClient(opts)
-
-	if _, err := conn.mqtt.Start(); err != nil {
-		return nil, err
-	}
+	conn.mqtt = bus.Connect(mqttURL, clientID)
 
 	log.Infof("Connected")
 
@@ -66,7 +62,7 @@ func Connect(clientID string) (*Connection, error) {
 }
 
 // GetMqttClient will be removed in a later version. All communication should happen via methods on Connection
-func (c *Connection) GetMqttClient() *mqtt.MqttClient {
+func (c *Connection) GetMqttClient() *bus.Bus {
 	return c.mqtt
 }
 
@@ -86,6 +82,7 @@ type rpcMessage struct {
 // The second parameter should be of type map[string]string and will contain one value for each place holder
 // specified in the topic string.
 func (c *Connection) Subscribe(topic string, callback interface{}) error {
+	log.Println("Subscribing to " + topic)
 	return c.subscribe(true, topic, callback)
 }
 
@@ -101,15 +98,10 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 		return err
 	}
 
-	filter, err := mqtt.NewTopicFilter(GetSubscribeTopic(topic), 0)
-	if err != nil {
-		c.log.FatalError(err, "Failed to subscribe to "+topic)
-	}
-
 	finished := false
 	mutex := &sync.Mutex{}
 
-	receipt, err := c.mqtt.StartSubscription(func(_ *mqtt.MqttClient, message mqtt.Message) {
+	_, err = c.mqtt.Subscribe(GetSubscribeTopic(topic), func(incomingTopic string, payload []byte) {
 		// We lock so that the callback has a chance to return false,
 		// to prevent any more messages arriving on this subscription
 		mutex.Lock()
@@ -119,9 +111,9 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 			return
 		}
 
-		values, ok := MatchTopicPattern(topic, message.Topic())
+		values, ok := MatchTopicPattern(topic, incomingTopic)
 		if !ok {
-			c.log.Warningf("Failed to read params from topic: %s using template: %s", message.Topic(), topic)
+			c.log.Warningf("Failed to read params from topic: %s using template: %s", incomingTopic, topic)
 			mutex.Unlock()
 		} else {
 
@@ -129,23 +121,23 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 
 			if rpc {
 				msg := &rpcMessage{}
-				err := json.Unmarshal(message.Payload(), msg)
+				err := json.Unmarshal(payload, msg)
 
 				if err != nil {
-					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
+					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
 					return
 				}
 
 				json2.ReadRPCParams(msg.Params, &params)
 				if err != nil {
-					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", message.Topic(), err)
+					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
 					return
 				}
 			} else {
-				err := json.Unmarshal(message.Payload(), &params)
+				err := json.Unmarshal(payload, &params)
 
 				if err != nil {
-					c.log.Warningf("Failed to read parameters in call to %s - %v", message.Topic(), err)
+					c.log.Warningf("Failed to read parameters in call to %s - %v", incomingTopic, err)
 					return
 				}
 			}
@@ -160,14 +152,9 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 			}()
 
 		}
-	}, filter)
+	})
 
-	if err != nil {
-		return err
-	}
-
-	<-receipt
-	return nil
+	return err
 }
 
 // GetServiceClient returns an RPC client for the given service.
@@ -389,7 +376,7 @@ func (c *Connection) PublishRaw(topic string, payload ...interface{}) error {
 		return fmt.Errorf("Failed to marshall mqtt message: %s", err)
 	}
 
-	c.mqtt.Publish(mqtt.QoS(0), topic, jsonPayload)
+	c.mqtt.Publish(topic, jsonPayload)
 
 	if err != nil {
 		return fmt.Errorf("Failed to write publish message to MQTT: %s", err)

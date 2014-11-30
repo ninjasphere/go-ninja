@@ -101,7 +101,7 @@ func (c *ClientCodec) DecodeClientResponse(msg []byte, reply interface{}) error 
 		return err
 	}
 	if res.Result != nil {
-	   return json.Unmarshal(*res.Result, reply)
+		return json.Unmarshal(*res.Result, reply)
 	}
 	return nil
 }
