@@ -12,8 +12,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/schemas"
-	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 // ----------------------------------------------------------------------------
@@ -22,8 +22,8 @@ import (
 
 // Codec creates a CodecRequest to process each request.
 type Codec interface {
-	NewRequest(topic string, message mqtt.Message) (CodecRequest, error)
-	SendNotification(c *mqtt.MqttClient, topic string, payload ...interface{}) error
+	NewRequest(topic string, payload []byte) (CodecRequest, error)
+	SendNotification(c bus.Bus, topic string, payload ...interface{}) error
 }
 
 // CodecRequest decodes a request and encodes a response using a specific
@@ -34,9 +34,9 @@ type CodecRequest interface {
 	// Reads the request filling the RPC method args.
 	ReadRequest(interface{}) error
 	// Writes the response using the RPC method reply.
-	WriteResponse(c *mqtt.MqttClient, response interface{})
+	WriteResponse(c bus.Bus, response interface{})
 	// Writes an error produced by the server.
-	WriteError(c *mqtt.MqttClient, err error)
+	WriteError(c bus.Bus, err error)
 }
 
 // ----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ type CodecRequest interface {
 // ----------------------------------------------------------------------------
 
 // NewServer returns a new RPC server.
-func NewServer(client *mqtt.MqttClient, codec Codec) *Server {
+func NewServer(client bus.Bus, codec Codec) *Server {
 	return &Server{
 		client:   client,
 		codec:    codec,
@@ -54,7 +54,7 @@ func NewServer(client *mqtt.MqttClient, codec Codec) *Server {
 
 // Server serves registered RPC services using registered codecs.
 type Server struct {
-	client   *mqtt.MqttClient
+	client   bus.Bus
 	codec    Codec
 	services *serviceMap
 }
@@ -103,20 +103,13 @@ func (s *ExportedService) SendEvent(event string, payload interface{}) error {
 // All other methods are ignored.
 func (s *Server) RegisterService(receiver interface{}, topic string, schema string) (service *ExportedService, err error) {
 
-	filter, err := mqtt.NewTopicFilter(topic, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	receipt, err := s.client.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
-		go s.serveRequest(topic, message)
-	}, filter)
+	_, err = s.client.Subscribe(topic, func(topic string, payload []byte) {
+		s.serveRequest(topic, payload)
+	})
 
 	if err != nil {
 		return nil, err
 	}
-
-	<-receipt
 
 	methods, err := schemas.GetServiceMethods(schema)
 	if err != nil {
@@ -161,12 +154,12 @@ type Message struct {
 }
 
 // ServeRequest handles an incoming Json-RPC MQTT message
-func (s *Server) serveRequest(topic string, message mqtt.Message) {
+func (s *Server) serveRequest(topic string, payload []byte) {
 
 	log.Debugf("Serving request to %s", topic)
 
 	// Create a new codec request.
-	codecReq, err := s.codec.NewRequest(topic, message)
+	codecReq, err := s.codec.NewRequest(topic, payload)
 
 	if err != nil {
 		codecReq.WriteError(s.client, err)

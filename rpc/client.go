@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 var log = logger.GetLogger("rpc")
@@ -42,13 +42,13 @@ type Call struct {
 type Client struct {
 	mutex      sync.Mutex // protects following
 	codec      ClientCodec
-	mqtt       *mqtt.MqttClient
+	mqtt       bus.Bus
 	pending    map[uint32]*Call
 	subscribed map[string]bool
 }
 
 // NewClient creates a new rpc client using the provided MQTT connection
-func NewClient(mqtt *mqtt.MqttClient, codec ClientCodec) *Client {
+func NewClient(mqtt bus.Bus, codec ClientCodec) *Client {
 	client := &Client{
 		pending:    make(map[uint32]*Call),
 		subscribed: make(map[string]bool),
@@ -72,44 +72,35 @@ func (client *Client) send(call *Call) error {
 
 			log.Debugf("Subscribing to %s", replyTopic)
 
-			filter, err := mqtt.NewTopicFilter(replyTopic, 0)
-			if err != nil {
-				return err
-			}
-
-			receipt, err := client.mqtt.StartSubscription(func(mqtt *mqtt.MqttClient, message mqtt.Message) {
-				log.Debugf("< Incoming to %s : %s", message.Topic(), message.Payload())
-				go client.handleResponse(message)
-			}, filter)
+			_, err := client.mqtt.Subscribe(replyTopic, func(topic string, payload []byte) {
+				log.Debugf("< Incoming to %s : %s", topic, payload)
+				go client.handleResponse(topic, payload)
+			})
 
 			if err != nil {
 				return err
 			}
 
 			client.subscribed[replyTopic] = true
-
-			<-receipt
 		}
 	}
 
 	log.Debugf("< Outgoing to %s : %s", call.Topic, payload)
 
-	pubReceipt := client.mqtt.Publish(mqtt.QoS(0), call.Topic, payload)
+	client.mqtt.Publish(call.Topic, payload)
 
 	if call.Done != nil {
-		<-pubReceipt
-
 		client.pending[call.ID] = call
 	}
 
 	return nil
 }
 
-func (client *Client) handleResponse(message mqtt.Message) {
-	id, err := client.codec.DecodeIdAndError(message.Payload())
+func (client *Client) handleResponse(topic string, payload []byte) {
+	id, err := client.codec.DecodeIdAndError(payload)
 
 	if id == nil {
-		log.Debugf("Failed to decode reply: %s error: %s", message.Payload(), err)
+		log.Debugf("Failed to decode reply: %s error: %s", payload, err)
 		return
 	}
 
@@ -134,7 +125,7 @@ func (client *Client) handleResponse(message mqtt.Message) {
 	}
 
 	if call.Reply != nil {
-		call.Error = client.codec.DecodeClientResponse(message.Payload(), call.Reply)
+		call.Error = client.codec.DecodeClientResponse(payload, call.Reply)
 	}
 
 	call.done()

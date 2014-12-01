@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/rpc"
-	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
 var null = json.RawMessage([]byte("null"))
@@ -82,12 +82,12 @@ type Codec struct {
 }
 
 // NewRequest returns a CodecRequest.
-func (c *Codec) NewRequest(topic string, msg mqtt.Message) (rpc.CodecRequest, error) {
-	return newCodecRequest(topic, msg)
+func (c *Codec) NewRequest(topic string, payload []byte) (rpc.CodecRequest, error) {
+	return newCodecRequest(topic, payload)
 }
 
 // SendNotification sends a JSON-RPC notification
-func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload ...interface{}) error {
+func (c *Codec) SendNotification(client bus.Bus, topic string, payload ...interface{}) error {
 
 	notification := &serverRequest{
 		Version: Version,
@@ -108,11 +108,7 @@ func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload 
 		log.Debugf("< Outgoing to %s : %s", topic, jsonNotification)
 	}
 
-	client.Publish(mqtt.QoS(0), topic, jsonNotification)
-
-	if err != nil {
-		return fmt.Errorf("Failed to write rpc notification to MQTT: %s", err)
-	}
+	client.Publish(topic, jsonNotification)
 
 	return nil
 }
@@ -122,20 +118,20 @@ func (c *Codec) SendNotification(client *mqtt.MqttClient, topic string, payload 
 // ----------------------------------------------------------------------------
 
 // newCodecRequest returns a new CodecRequest.
-func newCodecRequest(topic string, msg mqtt.Message) (rpc.CodecRequest, error) {
+func newCodecRequest(topic string, payload []byte) (rpc.CodecRequest, error) {
 
-	log.Debugf("> Incoming to %s : %s", topic, msg.Payload())
+	log.Debugf("> Incoming to %s : %s", topic, payload)
 
 	// Decode the request body and check if RPC method is valid.
 	req := new(serverRequest)
-	err := json.Unmarshal(msg.Payload(), req)
+	err := json.Unmarshal(payload, req)
 	if err != nil {
 		err = &Error{
 			Code:    E_PARSE,
 			Message: err.Error(),
 			Data:    req,
 		}
-		log.Infof("Bad incoming json-rpc request to %s error:%s json:%s ", topic, err, msg.Payload())
+		log.Infof("Bad incoming json-rpc request to %s error:%s json:%s ", topic, err, payload)
 	} else {
 		method := upperFirst(*req.Method)
 
@@ -144,7 +140,7 @@ func newCodecRequest(topic string, msg mqtt.Message) (rpc.CodecRequest, error) {
 		if req.Version != Version {
 			err = &Error{
 				Code:    E_INVALID_REQ,
-				Message: "jsonrpc must be " + Version,
+				Message: "jsonrpc must be version " + Version,
 				Data:    req,
 			}
 		}
@@ -228,7 +224,7 @@ func ReadRPCParams(params *json.RawMessage, args interface{}) error {
 }
 
 // WriteResponse encodes the response and writes it to the reply topic
-func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{}) {
+func (c *CodecRequest) WriteResponse(client bus.Bus, reply interface{}) {
 	if reply == nil {
 		reply = &null
 	}
@@ -241,7 +237,7 @@ func (c *CodecRequest) WriteResponse(client *mqtt.MqttClient, reply interface{})
 	c.writeServerResponse(client, res)
 }
 
-func (c *CodecRequest) WriteError(client *mqtt.MqttClient, err error) {
+func (c *CodecRequest) WriteError(client bus.Bus, err error) {
 	jsonErr, ok := err.(*Error)
 	if !ok {
 		jsonErr = &Error{
@@ -258,7 +254,7 @@ func (c *CodecRequest) WriteError(client *mqtt.MqttClient, err error) {
 	c.writeServerResponse(client, res)
 }
 
-func (c *CodecRequest) writeServerResponse(client *mqtt.MqttClient, res *serverResponse) {
+func (c *CodecRequest) writeServerResponse(client bus.Bus, res *serverResponse) {
 	// Id is null for notifications and they don't have a response.
 
 	if c.request.ID != nil {
@@ -272,7 +268,7 @@ func (c *CodecRequest) writeServerResponse(client *mqtt.MqttClient, res *serverR
 			return
 		}
 
-		client.Publish(mqtt.QoS(0), c.topic+"/reply", payload)
+		client.Publish(c.topic+"/reply", payload)
 
 		if err != nil {
 			log.Errorf("Failed to write rpc response to MQTT: %s", err)
