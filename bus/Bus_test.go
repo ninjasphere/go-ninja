@@ -9,7 +9,7 @@ import (
 
 func TestWhatever(t *testing.T) {
 
-	bus := Connect("localhost:1883", "test")
+	bus := MustConnect("localhost:1883", "test")
 	bus.Subscribe("#", func(topic string, payload []byte) {
 		spew.Dump("message!", message)
 	})

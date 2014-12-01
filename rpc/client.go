@@ -42,13 +42,13 @@ type Call struct {
 type Client struct {
 	mutex      sync.Mutex // protects following
 	codec      ClientCodec
-	mqtt       *bus.Bus
+	mqtt       bus.Bus
 	pending    map[uint32]*Call
 	subscribed map[string]bool
 }
 
 // NewClient creates a new rpc client using the provided MQTT connection
-func NewClient(mqtt *bus.Bus, codec ClientCodec) *Client {
+func NewClient(mqtt bus.Bus, codec ClientCodec) *Client {
 	client := &Client{
 		pending:    make(map[uint32]*Call),
 		subscribed: make(map[string]bool),

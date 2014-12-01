@@ -87,7 +87,7 @@ func (c *Codec) NewRequest(topic string, payload []byte) (rpc.CodecRequest, erro
 }
 
 // SendNotification sends a JSON-RPC notification
-func (c *Codec) SendNotification(client *bus.Bus, topic string, payload ...interface{}) error {
+func (c *Codec) SendNotification(client bus.Bus, topic string, payload ...interface{}) error {
 
 	notification := &serverRequest{
 		Version: Version,
@@ -224,7 +224,7 @@ func ReadRPCParams(params *json.RawMessage, args interface{}) error {
 }
 
 // WriteResponse encodes the response and writes it to the reply topic
-func (c *CodecRequest) WriteResponse(client *bus.Bus, reply interface{}) {
+func (c *CodecRequest) WriteResponse(client bus.Bus, reply interface{}) {
 	if reply == nil {
 		reply = &null
 	}
@@ -237,7 +237,7 @@ func (c *CodecRequest) WriteResponse(client *bus.Bus, reply interface{}) {
 	c.writeServerResponse(client, res)
 }
 
-func (c *CodecRequest) WriteError(client *bus.Bus, err error) {
+func (c *CodecRequest) WriteError(client bus.Bus, err error) {
 	jsonErr, ok := err.(*Error)
 	if !ok {
 		jsonErr = &Error{
@@ -254,7 +254,7 @@ func (c *CodecRequest) WriteError(client *bus.Bus, err error) {
 	c.writeServerResponse(client, res)
 }
 
-func (c *CodecRequest) writeServerResponse(client *bus.Bus, res *serverResponse) {
+func (c *CodecRequest) writeServerResponse(client bus.Bus, res *serverResponse) {
 	// Id is null for notifications and they don't have a response.
 
 	if c.request.ID != nil {

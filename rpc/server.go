@@ -23,7 +23,7 @@ import (
 // Codec creates a CodecRequest to process each request.
 type Codec interface {
 	NewRequest(topic string, payload []byte) (CodecRequest, error)
-	SendNotification(c *bus.Bus, topic string, payload ...interface{}) error
+	SendNotification(c bus.Bus, topic string, payload ...interface{}) error
 }
 
 // CodecRequest decodes a request and encodes a response using a specific
@@ -34,9 +34,9 @@ type CodecRequest interface {
 	// Reads the request filling the RPC method args.
 	ReadRequest(interface{}) error
 	// Writes the response using the RPC method reply.
-	WriteResponse(c *bus.Bus, response interface{})
+	WriteResponse(c bus.Bus, response interface{})
 	// Writes an error produced by the server.
-	WriteError(c *bus.Bus, err error)
+	WriteError(c bus.Bus, err error)
 }
 
 // ----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ type CodecRequest interface {
 // ----------------------------------------------------------------------------
 
 // NewServer returns a new RPC server.
-func NewServer(client *bus.Bus, codec Codec) *Server {
+func NewServer(client bus.Bus, codec Codec) *Server {
 	return &Server{
 		client:   client,
 		codec:    codec,
@@ -54,7 +54,7 @@ func NewServer(client *bus.Bus, codec Codec) *Server {
 
 // Server serves registered RPC services using registered codecs.
 type Server struct {
-	client   *bus.Bus
+	client   bus.Bus
 	codec    Codec
 	services *serviceMap
 }

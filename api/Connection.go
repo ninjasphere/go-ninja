@@ -27,7 +27,7 @@ var (
 // Connection Holds the connection to the Ninja MQTT bus, and provides all the methods needed to communicate with
 // the other modules in Sphere.
 type Connection struct {
-	mqtt      *bus.Bus
+	mqtt      bus.Bus
 	log       *logger.Logger
 	rpc       *rpc.Client
 	rpcServer *rpc.Server
@@ -44,7 +44,7 @@ func Connect(clientID string) (*Connection, error) {
 
 	log.Infof("Connecting to %s using cid:%s", mqttURL, clientID)
 
-	conn.mqtt = bus.Connect(mqttURL, clientID)
+	conn.mqtt = bus.MustConnect(mqttURL, clientID)
 
 	log.Infof("Connected")
 
@@ -62,7 +62,7 @@ func Connect(clientID string) (*Connection, error) {
 }
 
 // GetMqttClient will be removed in a later version. All communication should happen via methods on Connection
-func (c *Connection) GetMqttClient() *bus.Bus {
+func (c *Connection) GetMqttClient() bus.Bus {
 	return c.mqtt
 }
 
