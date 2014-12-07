@@ -1,18 +1,22 @@
 package bus
 
 import (
+	"os"
+	"os/signal"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-ninja/support"
 )
 
 func TestWhatever(t *testing.T) {
 
 	bus := MustConnect("localhost:1883", "test")
-	bus.Subscribe("#", func(topic string, payload []byte) {
-		spew.Dump("message!", message)
+	bus.Subscribe("$device/#", func(topic string, payload []byte) {
+		spew.Dump("message!", topic, payload)
 	})
 
-	support.WaitUntilSignal()
+	blah := make(chan os.Signal, 1)
+	signal.Notify(make(chan os.Signal, 1), os.Interrupt, os.Kill)
+	log.Infof("Got signal: %v", <-blah)
+
 }
