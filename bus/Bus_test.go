@@ -1,22 +1,30 @@
 package bus
 
 import (
-	"os"
-	"os/signal"
 	"testing"
-
-	"github.com/davecgh/go-spew/spew"
+	"time"
 )
 
-func TestWhatever(t *testing.T) {
+func TestSimplePubSub(t *testing.T) {
 
-	bus := MustConnect("localhost:1883", "test")
-	bus.Subscribe("$device/#", func(topic string, payload []byte) {
-		spew.Dump("message!", topic, payload)
+	done := make(chan bool)
+	topic := "testing/what/ever"
+	payload := `{"hello":123}`
+
+	bus := MustConnect("localhost:1883", "BusTest")
+	bus.Subscribe("testing/#", func(t string, p []byte) {
+		done <- topic == topic && string(p) == payload
 	})
 
-	blah := make(chan os.Signal, 1)
-	signal.Notify(make(chan os.Signal, 1), os.Interrupt, os.Kill)
-	log.Infof("Got signal: %v", <-blah)
+	bus.Publish(topic, []byte(payload))
+
+	select {
+	case success := <-done:
+		if !success {
+			t.Failed()
+		}
+	case <-time.After(time.Second):
+		t.Failed()
+	}
 
 }

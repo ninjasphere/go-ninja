@@ -2,8 +2,8 @@ package bus
 
 import (
 	"fmt"
+	"regexp"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/surge/surgemq/message"
 	"github.com/surge/surgemq/service"
 )
@@ -29,12 +29,17 @@ func ConnectSurgeBus(host, id string) (*SurgeBus, error) {
 	return bus, nil
 }
 
+var validIDChars = regexp.MustCompile("[^0-9a-zA-Z]")
+
 func newConnectMessage(cid string) *message.ConnectMessage {
 	msg := message.NewConnectMessage()
 
 	msg.SetVersion(4)
 	msg.SetCleanSession(true)
-	msg.SetClientId([]byte(cid))
+
+	if err := msg.SetClientId([]byte(validIDChars.ReplaceAllString(cid, ""))); err != nil {
+		log.Fatalf("Invalid mqtt client ID: %s", err)
+	}
 	msg.SetKeepAlive(90)
 
 	msg.SetWillQos(1)
@@ -52,7 +57,9 @@ func (b *SurgeBus) Publish(topic string, payload []byte) {
 	msg.SetQoS(0)
 
 	b.mqtt.Publish(msg, func(msg, ack message.Message, err error) {
-		spew.Dump("Publish ack", msg, ack, err)
+		if err != nil {
+			log.Warningf("Failed to publish message to %s. TODO: Handle acks!", topic)
+		}
 	})
 
 }
