@@ -164,8 +164,6 @@ func MustRefresh() {
 
 	flat["installDirectory"] = installDir
 
-	//sphere_configDir=/home/elliot/repos/sphere-dev/sphere-common/config
-
 	if _, err := os.Stat(installDir); err != nil {
 		log.Fatalf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
 	}
@@ -183,13 +181,13 @@ func MustRefresh() {
 		addFile(filepath.Join(".", "config", environments[i]+".json"), flat)
 	}
 
-	// common directory environment(s) config
+	// common environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {
-		addFile(filepath.Join(installDir, "sphere-common", "config", environments[i]+".json"), flat)
+		addFile(filepath.Join(installDir, "config", environments[i]+".json"), flat)
 	}
 
-	// sphere-common credentials config
-	addFile(filepath.Join(installDir, "sphere-common", "config", "credentials.json"), flat)
+	// common credentials config
+	addFile(filepath.Join(installDir, "config", "credentials.json"), flat)
 
 	//log.Debugf("Loaded config: %v", flat)
 
