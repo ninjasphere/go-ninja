@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
 	"gopkg.in/alecthomas/kingpin.v1"
@@ -64,6 +65,16 @@ func String(def string, path ...string) string {
 // MustString returns the string property at the path
 func MustString(path ...string) string {
 	return mustGet(path...).(string)
+}
+
+// MustDuration returns the string property at the path, as a time.Duration
+func MustDuration(path ...string) time.Duration {
+	s := MustString(path...)
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		log.Fatalf("Failed to parse duration '%s': %s", s, err)
+	}
+	return d
 }
 
 // MustStringArray returns the string array property at the path
