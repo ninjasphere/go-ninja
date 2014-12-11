@@ -155,8 +155,16 @@ func MustRefresh() {
 	for name, value := range flat {
 		if value == nil {
 			environments = append(environments, name)
+		} else {
+			if ok, boolValue := value.(bool); ok {
+				if boolValue {
+					environments = append(environments, name)
+				}
+			}
 		}
 	}
+
+	log.Infof("Environments: %s", strings.Join(environments, ", "))
 
 	flat["env"] = environments
 
@@ -266,6 +274,8 @@ func addFile(path string, config map[string]interface{}) error {
 	if e != nil {
 		return fmt.Errorf("Failed to read file: %s error: %s", path, e)
 	}
+
+	//spew.Dump(path, content)
 
 	flatten(content, nil, config)
 	return nil
