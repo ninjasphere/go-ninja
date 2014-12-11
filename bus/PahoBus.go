@@ -2,13 +2,19 @@ package bus
 
 // TODO: Locking!
 
-import "github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
+import (
+	"sync"
+	"time"
+
+	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
+)
 
 type PahoBus struct {
 	host          string
 	id            string
 	mqtt          *mqtt.MqttClient
 	subscriptions []*subscription
+	reconnectLock sync.Mutex
 }
 
 func NewPahoBus(host, id string) (*PahoBus, error) {
@@ -17,6 +23,7 @@ func NewPahoBus(host, id string) (*PahoBus, error) {
 		host:          host,
 		id:            id,
 		subscriptions: make([]*subscription, 0),
+		reconnectLock: sync.Mutex{},
 	}
 
 	return bus, bus.connect()
@@ -29,6 +36,13 @@ func (b *PahoBus) connect() error {
 	opts := mqtt.NewClientOptions().AddBroker("tcp://" + b.host).SetClientId(b.id).SetCleanSession(true)
 	opts = opts.SetOnConnectionLost(func(client *mqtt.MqttClient, reason error) {
 		log.Warningf("Lost connection to server: %s", reason)
+
+		b.reconnectLock.Lock()
+		go func() {
+			time.Sleep(time.Second)
+			b.reconnectLock.Unlock()
+		}()
+
 		b.connect()
 	})
 	b.mqtt = mqtt.NewClient(opts)
