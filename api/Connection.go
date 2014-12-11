@@ -385,6 +385,23 @@ func (c *Connection) PublishRaw(topic string, payload ...interface{}) error {
 	return nil
 }
 
+// PublishRawSingleValue sends a simple message with a single json payload
+func (c *Connection) PublishRawSingleValue(topic string, payload interface{}) error {
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Failed to marshall mqtt message: %s", err)
+	}
+
+	c.mqtt.Publish(topic, jsonPayload)
+
+	if err != nil {
+		return fmt.Errorf("Failed to write publish message to MQTT: %s", err)
+	}
+
+	return nil
+}
+
 // SendNotification Sends a simple json-rpc notification to a topic
 func (c *Connection) SendNotification(topic string, params ...interface{}) error {
 	return c.rpcServer.SendNotification(topic, params...)
