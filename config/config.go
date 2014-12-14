@@ -101,6 +101,10 @@ func MustInt(path ...string) int {
 	return int(mustGet(path...).(float64))
 }
 
+func MustFloat(def int, path ...string) float64 {
+	return mustGet(path...).(float64)
+}
+
 // Bool returns the boolean property at the path, with a default
 func Bool(def bool, path ...string) bool {
 	val := get(path...)
