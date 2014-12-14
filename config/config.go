@@ -101,7 +101,7 @@ func MustInt(path ...string) int {
 	return int(mustGet(path...).(float64))
 }
 
-func MustFloat(def int, path ...string) float64 {
+func MustFloat(path ...string) float64 {
 	return mustGet(path...).(float64)
 }
 
