@@ -15,14 +15,16 @@ type SurgeBus struct {
 
 func ConnectSurgeBus(host, id string) (*SurgeBus, error) {
 
-	svc, err := service.Connect("tcp://"+host, newConnectMessage(id))
+	c := &service.Client{}
+
+	err := c.Connect("tcp://"+host, newConnectMessage(id))
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to %s: %s", host, err)
 	}
 
 	bus := &SurgeBus{
-		mqtt:          svc,
+		mqtt:          c,
 		subscriptions: make([]*subscription, 0),
 	}
 
@@ -56,10 +58,11 @@ func (b *SurgeBus) Publish(topic string, payload []byte) {
 	msg.SetPayload(payload)
 	msg.SetQoS(0)
 
-	b.mqtt.Publish(msg, func(msg, ack message.Message, err error) {
+	b.mqtt.Publish(msg, func(msg, ack message.Message, err error) error {
 		if err != nil {
 			log.Warningf("Failed to publish message to %s. TODO: Handle acks!", topic)
 		}
+		return nil
 	})
 
 }
@@ -90,8 +93,9 @@ func (b *SurgeBus) subscribe(subscription *subscription) error {
 	done := make(chan error, 1)
 
 	b.mqtt.Subscribe(sub,
-		func(msg, ack message.Message, err error) {
+		func(msg, ack message.Message, err error) error {
 			done <- err
+			return nil
 		},
 		func(msg *message.PublishMessage) error {
 			subscription.callback(string(msg.Topic()), msg.Payload())
