@@ -51,13 +51,6 @@ func Connect(clientID string) (*Connection, error) {
 	conn.rpc = rpc.NewClient(conn.mqtt, json2.NewClientCodec())
 	conn.rpcServer = rpc.NewServer(conn.mqtt, json2.NewCodec())
 
-	job, err := CreateStatusJob(&conn, clientID)
-
-	if err != nil {
-		return nil, err
-	}
-	job.Start()
-
 	return &conn, nil
 }
 
