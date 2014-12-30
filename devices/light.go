@@ -41,7 +41,7 @@ func (c *LightBatchChannel) GetProtocol() string {
 	return "core/batching"
 }
 
-func (c *LightBatchChannel) SetEventHandler(_ func(event string, payload interface{}) error) {
+func (c *LightBatchChannel) SetEventHandler(_ func(event string, payload ...interface{}) error) {
 }
 
 type LightDevice struct {
