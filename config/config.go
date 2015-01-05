@@ -54,6 +54,10 @@ func Serial() string {
 	return serial
 }
 
+func IsPaired() bool {
+	return HasString("siteId") && HasString("token") && HasString("userId") && HasString("nodeId")
+}
+
 func String(def string, path ...string) string {
 	val := get(path...)
 	if val == nil {
