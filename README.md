@@ -32,7 +32,7 @@ For example usage in drivers, check out [driver-go-chromecast](https://github.co
 
 ### More Information
 
-More information can be found on the [project site](http://github.com/ninjasphere/driver-go-chromecase) or by visiting the Ninja Blocks [forums](https://discuss.ninjablocks.com).
+More information can be found on the [project site](http://github.com/ninjasphere/go-ninja) or by visiting the Ninja Blocks [forums](https://discuss.ninjablocks.com).
 
 ### Contributing Changes
 
