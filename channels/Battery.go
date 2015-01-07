@@ -17,3 +17,7 @@ func NewBatteryChannel(device BatteryDevice) *BatteryChannel {
 func (c *BatteryChannel) SendState(state float64) error {
 	return c.SendEvent("state", state)
 }
+
+func (c *BatteryChannel) SendWarning() error {
+	return c.SendEvent("warning")
+}

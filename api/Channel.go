@@ -8,5 +8,5 @@ package ninja
 //
 type Channel interface {
 	GetProtocol() string
-	SetEventHandler(func(event string, payload interface{}) error)
+	SetEventHandler(func(event string, payload ...interface{}) error)
 }

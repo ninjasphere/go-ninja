@@ -225,7 +225,12 @@ func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, 
 	return mapDoc, nil
 }
 
-var schemasCache = make(map[string]*gojsonschema.JsonSchemaDocument)
+type schemaResponse struct {
+	schema *gojsonschema.JsonSchemaDocument
+	err    error
+}
+
+var schemasCache = make(map[string]schemaResponse)
 
 func GetSchema(documentURL string) (*gojsonschema.JsonSchemaDocument, error) {
 
@@ -239,10 +244,11 @@ func GetSchema(documentURL string) (*gojsonschema.JsonSchemaDocument, error) {
 	schema, ok := schemasCache[local]
 	if !ok {
 		log.Debugf("Cache miss on '%s'", resolved.GetUrl().String())
-		schema, err = gojsonschema.NewJsonSchemaDocument(local, schemaPool)
+		s, err := gojsonschema.NewJsonSchemaDocument(local, schemaPool)
+		schema = schemaResponse{s, err}
 		schemasCache[local] = schema
 	}
-	return schema, err
+	return schema.schema, schema.err
 }
 
 func useLocalUrl(ref gojsonreference.JsonReference) gojsonreference.JsonReference {

@@ -310,8 +310,12 @@ func (c *Connection) ExportService(service interface{}, topic string, announceme
 	return c.exportService(service, topic, &simpleService{*announcement})
 }
 
-type eventingService interface {
+type eventingServiceDeprecated interface {
 	SetEventHandler(func(event string, payload interface{}) error)
+}
+
+type eventingService interface {
+	SetEventHandler(func(event string, payload ...interface{}) error)
 }
 
 type serviceAnnouncement interface {
@@ -352,9 +356,17 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 	c.log.Debugf("Exported service on topic: %s (schema: %s) with methods: %s", topic, announcement.GetServiceAnnouncement().Schema, strings.Join(*announcement.GetServiceAnnouncement().SupportedMethods, ", "))
 
 	switch service := service.(type) {
-	case eventingService:
+	case eventingServiceDeprecated:
 		service.SetEventHandler(func(event string, payload interface{}) error {
 			return exportedService.SendEvent(event, payload)
+		})
+	case eventingService:
+		service.SetEventHandler(func(event string, payload ...interface{}) error {
+			err := exportedService.SendEvent(event, payload...)
+			if err != nil {
+				c.log.Infof("Event failed to send: %s", err)
+			}
+			return err
 		})
 	}
 

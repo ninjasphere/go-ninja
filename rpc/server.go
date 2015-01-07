@@ -66,23 +66,45 @@ type ExportedService struct {
 	schema  string
 }
 
-func (s *ExportedService) SendEvent(event string, payload interface{}) error {
+func (s *ExportedService) SendEvent(event string, payload ...interface{}) error {
+
+	schema := s.schema + "#/events/" + event + "/value"
+
+	log.Debugf("Validating event '%s' (schema: %s). Payload: %+v", event, schema, payload)
+
+	if len(payload) > 1 {
+		return fmt.Errorf("Events can only have a single payload. Tried to emit '%s' with %d payloads.", event, len(payload))
+	}
 
 	// We ignore announce events, as we don't define them in all the protocols/services
 	if event != "announce" {
-		schema := s.schema + "#/events/" + event + "/value"
-		message, err := schemas.Validate(schema, payload)
 
-		if message != nil {
-			return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
-		}
+		if len(payload) == 0 {
+			// If we don't have a payload, then we don't want our schema to define one.
+			_, err := schemas.GetSchema(schema)
+			if err == nil {
+				return fmt.Errorf("Event '%s' failed validation (schema: %s). A payload was defined, but none was given.", event, schema)
+			}
+		} else {
+			// If we have a payload, then we need our schema to define one.
+			_, err := schemas.GetSchema(schema)
+			if err != nil {
+				return fmt.Errorf("Event '%s' failed validation (schema: %s). A payload wasn't defined, but one was given.", event, schema)
+			}
 
-		if err != nil {
-			log.Warningf("Failed to validate event %s on service %s. Error:%s", event, s.schema, err)
+			message, err := schemas.Validate(schema, payload[0])
+
+			if message != nil {
+				return fmt.Errorf("Event '%s' failed validation (schema: %s) message: %s", event, schema, *message)
+			}
+
+			if err != nil {
+				log.Warningf("Failed to validate event %s on service %s. Error:%s", event, s.schema, err)
+			}
 		}
 	}
 
-	return s.server.SendNotification(s.topic+"/event/"+event, payload)
+	return s.server.SendNotification(s.topic+"/event/"+event, payload...)
 }
 
 // RegisterService adds a new service to the server.

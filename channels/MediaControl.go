@@ -72,5 +72,5 @@ func (c *MediaControlChannel) Previous() error {
 }
 
 func (c *MediaControlChannel) SendState(event MediaControlEvent) error {
-	return c.SendEvent(event.Name(), nil)
+	return c.SendEvent(event.Name())
 }
