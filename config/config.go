@@ -203,6 +203,9 @@ func MustRefresh() {
 	// credentials file
 	addFile("/data/etc/opt/ninja/credentials.json", flat)
 
+	// mesh file
+	addFile("/data/etc/opt/ninja/mesh.json", flat)
+
 	// home directory environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {
 		addFile(filepath.Join(userHome, ".sphere", environments[i]+".json"), flat)
