@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/logger"
 	"gopkg.in/alecthomas/kingpin.v1"
 )
@@ -24,6 +25,10 @@ var config map[string]interface{}
 
 func init() {
 	MustRefresh()
+
+	if Bool(false, "dumpConfig") {
+		spew.Dump(GetAll(false))
+	}
 }
 
 func GetAll(flatten bool) map[string]interface{} {
