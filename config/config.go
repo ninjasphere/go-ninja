@@ -200,6 +200,9 @@ func MustRefresh() {
 		log.Fatalf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
 	}
 
+	// User overrides (json)
+	addFile("/data/config.json", flat)
+
 	// credentials file
 	addFile("/data/etc/opt/ninja/credentials.json", flat)
 
