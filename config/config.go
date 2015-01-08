@@ -60,7 +60,7 @@ func Serial() string {
 }
 
 func IsPaired() bool {
-	return HasString("siteId") && HasString("token") && HasString("userId") && HasString("nodeId")
+	return /*HasString("sphereNetworkKey") && */ HasString("token") && HasString("userId")
 }
 
 func String(def string, path ...string) string {
