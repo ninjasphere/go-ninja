@@ -3,6 +3,7 @@ package bus
 import (
 	"strings"
 
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -15,7 +16,23 @@ type Bus interface {
 
 func MustConnect(host, id string) Bus {
 	//return ConnectTinyBus(host, id)
-	bus, err := NewPahoBus(host, id)
+
+	library := config.String("paho", "mqtt.implementation")
+
+	var bus Bus
+	var err error
+
+	switch library {
+	case "paho":
+		bus, err = ConnectTinyBus(host, id)
+	case "tiny":
+		bus, err = ConnectPahoBus(host, id)
+	case "surge":
+		bus, err = ConnectSurgeBus(host, id)
+	default:
+		log.Fatalf("Unknown mqtt implementation: %s", library)
+	}
+
 	if err != nil {
 		log.HandleError(err, "Failed to connect to mqtt")
 	}

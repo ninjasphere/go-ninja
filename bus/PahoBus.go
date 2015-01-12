@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/org.eclipse.paho.mqtt.golang"
 )
 
@@ -17,7 +18,7 @@ type PahoBus struct {
 	reconnectLock sync.Mutex
 }
 
-func NewPahoBus(host, id string) (*PahoBus, error) {
+func ConnectPahoBus(host, id string) (*PahoBus, error) {
 
 	bus := &PahoBus{
 		host:          host,
@@ -91,7 +92,13 @@ func (b *PahoBus) subscribe(subscription *subscription) error {
 	}
 
 	receipt, err := b.mqtt.StartSubscription(func(_ *mqtt.MqttClient, message mqtt.Message) {
-		subscription.callback(message.Topic(), message.Payload())
+		// XXX: ES: I've seen paho send me things I didn't ask for.
+		if matches(subscription.topic, message.Topic()) {
+			subscription.callback(message.Topic(), message.Payload())
+		} else {
+			log.Infof("FAIL! Asked for %s got %s", subscription.topic, message.Topic())
+			spew.Dump(filter)
+		}
 	}, filter)
 
 	if err != nil {
