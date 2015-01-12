@@ -9,6 +9,7 @@ package json2
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/ninjasphere/go-ninja/rpc"
 )
@@ -28,7 +29,7 @@ type clientRequest struct {
 
 	// The request id. This can be of any type. It is used to match the
 	// response with the request that it is replying to.
-	ID uint32 `json:"id"`
+	ID string `json:"id"`
 
 	// JSON-RPC protocol.
 	Version string `json:"jsonrpc"`
@@ -55,7 +56,7 @@ func (c *ClientCodec) EncodeClientRequest(call *rpc.Call) ([]byte, error) {
 		Version: "2.0",
 		Method:  call.ServiceMethod,
 		Params:  []interface{}{},
-		ID:      call.ID,
+		ID:      fmt.Sprintf("%d", call.ID),
 	}
 
 	if call.Args != nil {
@@ -75,7 +76,19 @@ func (c *ClientCodec) DecodeIdAndError(msg []byte) (*uint32, error) {
 	var id uint32
 	err := json.Unmarshal(*res.ID, &id)
 	if err != nil {
-		return nil, fmt.Errorf("Reply id isn't a uint32. Probably not for us '%s'", *res.ID)
+
+		var sID string
+		err = json.Unmarshal(*res.ID, &sID)
+
+		if err == nil {
+			var bigID uint64
+			bigID, err = strconv.ParseUint(sID, 10, 32)
+			id = uint32(bigID)
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Reply id isn't a uint32 or string uint32. Probably not for us '%s'", *res.ID)
 	}
 
 	if res.Error != nil {
