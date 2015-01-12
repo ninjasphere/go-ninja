@@ -189,23 +189,25 @@ func ReadRPCParams(params *json.RawMessage, args interface{}) error {
 	var err error
 
 	// Ninja: If we get an array in, try to pass its contents as one argument
-	paramsString := string(*params)
-	if paramsString == "[]" {
-		params = nil
-	} else if strings.HasPrefix(paramsString, "[") {
-		rawParams := &json.RawMessage{}
-		err := json.Unmarshal([]byte(paramsString[1:len(paramsString)-1]), rawParams)
+	if params != nil {
+		paramsString := string(*params)
+		if paramsString == "[]" {
+			params = nil
+		} else if strings.HasPrefix(paramsString, "[") {
+			rawParams := &json.RawMessage{}
+			err := json.Unmarshal([]byte(paramsString[1:len(paramsString)-1]), rawParams)
 
-		if err != nil {
-			err = &Error{
-				Code:    E_INVALID_REQ,
-				Message: "Ninja's golang rpc only accepts one param in an array. Use named params instead.",
-				Data:    params,
+			if err != nil {
+				err = &Error{
+					Code:    E_INVALID_REQ,
+					Message: "Ninja's golang rpc only accepts one param in an array. Use named params instead.",
+					Data:    params,
+				}
+			} else {
+				params = rawParams
 			}
-		} else {
-			params = rawParams
-		}
 
+		}
 	}
 
 	if err == nil && params != nil {
