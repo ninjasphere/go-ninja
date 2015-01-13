@@ -187,6 +187,9 @@ func (c *Connection) ExportApp(app App) error {
 
 // ExportDriver Exports a driver using the 'driver' protocol, and announces it
 func (c *Connection) ExportDriver(driver Driver) error {
+
+	time.Sleep(config.Duration(time.Second*3, "drivers.startUpDelay"))
+
 	topic := fmt.Sprintf("$node/%s/driver/%s", config.Serial(), driver.GetModuleInfo().ID)
 
 	announcement := driver.GetModuleInfo()
