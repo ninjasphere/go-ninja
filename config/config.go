@@ -76,6 +76,20 @@ func MustString(path ...string) string {
 	return mustGet(path...).(string)
 }
 
+// Duration returns the string property at the path, as a time.Duration
+func Duration(def time.Duration, path ...string) time.Duration {
+	s := String(hey, path...)
+	if s == hey {
+		return def
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		log.Warningf("Failed to parse duration '%s': %s", s, err)
+		return def
+	}
+	return d
+}
+
 // MustDuration returns the string property at the path, as a time.Duration
 func MustDuration(path ...string) time.Duration {
 	s := MustString(path...)
