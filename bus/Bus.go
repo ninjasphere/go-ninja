@@ -19,18 +19,20 @@ func MustConnect(host, id string) Bus {
 
 	library := config.String("paho", "mqtt.implementation")
 
+	log.Infof("Using mqtt bus implementation: %s", library)
+
 	var bus Bus
 	var err error
 
 	switch library {
-	case "paho":
-		bus, err = ConnectTinyBus(host, id)
 	case "tiny":
+		bus, err = ConnectTinyBus(host, id)
+	case "paho":
 		bus, err = ConnectPahoBus(host, id)
 	case "surge":
 		bus, err = ConnectSurgeBus(host, id)
 	default:
-		log.Fatalf("Unknown mqtt implementation: %s", library)
+		log.Fatalf("Unknown mqtt bus implementation: %s", library)
 	}
 
 	if err != nil {
