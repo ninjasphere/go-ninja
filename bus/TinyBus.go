@@ -7,8 +7,8 @@ import (
 	"time"
 
 	proto "github.com/huin/mqtt"
-	"github.com/jeffallen/mqtt"
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/mqtt"
 )
 
 type TinyBus struct {
