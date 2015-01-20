@@ -9,6 +9,7 @@ import (
 
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/wolfeidau/loggo-syslog"
 )
 
@@ -49,32 +50,44 @@ func GetLogger(name string) *Logger {
 // HandleError This notifies bugsnag and logs the error.
 func (l *Logger) HandleError(err error, msg string) {
 	l.Errorf("%s : %v", msg, err)
-	bugsnag.Notify(err)
+	// config.GetAll(true)
+	bugsnag.Notify(err, bugsnag.MetaData{
+		"SphereConfig": config.GetAll(true),
+	})
 }
 
 // FatalError This notifies bugsnag and logs the error then quits.
 func (l *Logger) FatalError(err error, msg string) {
 	l.Errorf("%s : %v", msg, err)
-	bugsnag.Notify(err)
+	bugsnag.Notify(err, bugsnag.MetaData{
+		"SphereConfig": config.GetAll(true),
+	})
+
 	os.Exit(1)
 }
 
 // HandleErrorf This notifies bugsnag and logs the error based on the args.
 func (l *Logger) HandleErrorf(err error, msg string, args ...interface{}) {
 	l.Errorf(msg, args)
-	bugsnag.Notify(err)
+	bugsnag.Notify(err, bugsnag.MetaData{
+		"SphereConfig": config.GetAll(true),
+	})
 }
 
 // FatalErrorf This notifies bugsnag and logs the error based on the args then quits
 func (l *Logger) FatalErrorf(err error, msg string, args ...interface{}) {
 	l.Errorf(msg, args)
-	bugsnag.Notify(err)
+	bugsnag.Notify(err, bugsnag.MetaData{
+		"SphereConfig": config.GetAll(true),
+	})
 	os.Exit(1)
 }
 
 // FatalErrorf This notifies bugsnag and logs the error based on the args then quits
 func (l *Logger) Fatalf(msg string, args ...interface{}) {
 	l.Errorf(msg, args)
-	bugsnag.Notify(fmt.Errorf(msg, args))
+	bugsnag.Notify(fmt.Errorf(msg, args), bugsnag.MetaData{
+		"SphereConfig": config.GetAll(true),
+	})
 	os.Exit(1)
 }

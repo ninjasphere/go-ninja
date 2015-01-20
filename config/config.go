@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -15,11 +16,8 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-ninja/logger"
 	"gopkg.in/alecthomas/kingpin.v1"
 )
-
-var log = logger.GetLogger("config")
 
 var config map[string]interface{}
 
@@ -84,7 +82,7 @@ func Duration(def time.Duration, path ...string) time.Duration {
 	}
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		log.Warningf("Failed to parse duration '%s': %s", s, err)
+		log.Printf("Failed to parse duration '%s': %s", s, err)
 		return def
 	}
 	return d
@@ -95,7 +93,7 @@ func MustDuration(path ...string) time.Duration {
 	s := MustString(path...)
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		log.Fatalf("Failed to parse duration '%s': %s", s, err)
+		log.Printf("Failed to parse duration '%s': %s", s, err)
 	}
 	return d
 }
@@ -191,7 +189,7 @@ func MustRefresh() {
 		}
 	}
 
-	log.Infof("Environments: %s", strings.Join(environments, ", "))
+	log.Printf("Environments: %s", strings.Join(environments, ", "))
 
 	flat["env"] = environments
 
