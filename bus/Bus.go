@@ -12,6 +12,10 @@ var log = logger.GetLogger("bus")
 type Bus interface {
 	Publish(topic string, payload []byte)
 	Subscribe(topic string, callback func(topic string, payload []byte)) (*subscription, error)
+	OnDisconnect(cb func())
+	OnConnect(cb func())
+	Connected() bool
+	Destroy()
 }
 
 func MustConnect(host, id string) Bus {
@@ -29,8 +33,6 @@ func MustConnect(host, id string) Bus {
 		bus, err = ConnectTinyBus(host, id)
 	case "paho":
 		bus, err = ConnectPahoBus(host, id)
-	case "surge":
-		bus, err = ConnectSurgeBus(host, id)
 	default:
 		log.Fatalf("Unknown mqtt bus implementation: %s", library)
 	}
@@ -76,4 +78,47 @@ func matches(subscription string, topic string) bool {
 		return true
 	}
 	return false
+}
+
+type baseBus struct {
+	destroyed          bool
+	connectionStatus   bool
+	disconnectHandlers []func()
+	connectHandlers    []func()
+}
+
+func (b *baseBus) OnDisconnect(cb func()) {
+	b.disconnectHandlers = append(b.disconnectHandlers, cb)
+}
+
+func (b *baseBus) OnConnect(cb func()) {
+	b.connectHandlers = append(b.connectHandlers, cb)
+}
+
+func (b *baseBus) Connected() bool {
+	if b.destroyed {
+		return false
+	}
+	return b.connectionStatus
+}
+
+func (b *baseBus) disconnected() {
+	if b.destroyed {
+		return
+	}
+	b.connectionStatus = false
+	for _, cb := range b.disconnectHandlers {
+		go cb()
+	}
+}
+
+func (b *baseBus) connected() {
+	if b.destroyed {
+		return
+	}
+
+	b.connectionStatus = true
+	for _, cb := range b.connectHandlers {
+		go cb()
+	}
 }

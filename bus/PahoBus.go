@@ -11,6 +11,7 @@ import (
 )
 
 type PahoBus struct {
+	baseBus
 	host          string
 	id            string
 	mqtt          *mqtt.MqttClient
@@ -34,9 +35,14 @@ func (b *PahoBus) connect() error {
 
 	log.Infof("Connecting paho bus")
 
-	opts := mqtt.NewClientOptions().AddBroker("tcp://" + b.host).SetClientId(b.id).SetCleanSession(true)
+	opts := mqtt.NewClientOptions().AddBroker("tcp://" + b.host).SetClientId(b.id).SetKeepAlive(10).SetCleanSession(true)
 	opts = opts.SetOnConnectionLost(func(client *mqtt.MqttClient, reason error) {
 		log.Warningf("Lost connection to server: %s", reason)
+		b.disconnected()
+
+		if b.destroyed {
+			return
+		}
 
 		b.reconnectLock.Lock()
 		go func() {
@@ -48,7 +54,9 @@ func (b *PahoBus) connect() error {
 	})
 	b.mqtt = mqtt.NewClient(opts)
 
-	return b.start()
+	var err = b.start()
+	b.connected()
+	return err
 }
 
 func (b *PahoBus) start() error {
@@ -64,6 +72,11 @@ func (b *PahoBus) start() error {
 	}
 
 	return nil
+}
+
+func (b *PahoBus) Destroy() {
+	b.destroyed = true
+	b.mqtt.Disconnect(0) // Wait 0ms to clean up
 }
 
 func (b *PahoBus) Publish(topic string, payload []byte) {

@@ -12,6 +12,7 @@ import (
 )
 
 type TinyBus struct {
+	baseBus
 	connecting    sync.WaitGroup
 	mqtt          *mqtt.ClientConn
 	subscriptions []*subscription
@@ -95,6 +96,8 @@ func (b *TinyBus) connect() {
 
 	b.mqtt = mqtt
 
+	b.connected()
+
 	for _, s := range b.subscriptions {
 		b.subscribe(s)
 	}
@@ -107,6 +110,7 @@ func (b *TinyBus) connect() {
 
 	go func() {
 		<-conn.done
+		b.disconnected()
 		b.connect()
 	}()
 }
@@ -117,6 +121,11 @@ func (b *TinyBus) onIncoming(message *proto.Publish) {
 			go sub.callback(message.TopicName, []byte(message.Payload.(proto.BytesPayload)))
 		}
 	}
+}
+
+func (b *TinyBus) Destroy() {
+	b.destroyed = true
+	b.mqtt.Disconnect()
 }
 
 func (b *TinyBus) Publish(topic string, payload []byte) {
