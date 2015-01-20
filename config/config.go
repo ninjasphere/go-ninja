@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"os/user"
@@ -16,10 +15,14 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/juju/loggo"
 	"gopkg.in/alecthomas/kingpin.v1"
 )
 
-var config map[string]interface{}
+var (
+	config map[string]interface{}
+	log    = loggo.GetLogger("config") // avoid the wrapper as it uses this module and will cause a loop
+)
 
 func init() {
 	MustRefresh()
@@ -32,9 +35,8 @@ func init() {
 func GetAll(flatten bool) map[string]interface{} {
 	if flatten {
 		return config
-	} else {
-		return unflatten(config)
 	}
+	return unflatten(config)
 }
 
 var serial string
@@ -48,7 +50,8 @@ func Serial() string {
 
 		err := cmd.Run()
 		if err != nil {
-			log.Fatalf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+			log.Errorf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+			panic(err)
 		}
 
 		serial = out.String()
@@ -82,7 +85,7 @@ func Duration(def time.Duration, path ...string) time.Duration {
 	}
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		log.Printf("Failed to parse duration '%s': %s", s, err)
+		log.Infof("Failed to parse duration '%s': %s", s, err)
 		return def
 	}
 	return d
@@ -93,7 +96,7 @@ func MustDuration(path ...string) time.Duration {
 	s := MustString(path...)
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		log.Printf("Failed to parse duration '%s': %s", s, err)
+		log.Infof("Failed to parse duration '%s': %s", s, err)
 	}
 	return d
 }
@@ -155,7 +158,8 @@ func HasString(path ...string) bool {
 func mustGet(path ...string) interface{} {
 	val, ok := config[strings.Join(path, ".")]
 	if !ok {
-		log.Fatalf("expected value for %v but found nothing", path)
+		log.Errorf("expected value for %v but found nothing", path)
+		panic(fmt.Errorf("expected value for %v but found nothing", path))
 	}
 	return val
 }
@@ -189,7 +193,7 @@ func MustRefresh() {
 		}
 	}
 
-	log.Printf("Environments: %s", strings.Join(environments, ", "))
+	log.Infof("Environments: %s", strings.Join(environments, ", "))
 
 	flat["env"] = environments
 
@@ -209,7 +213,8 @@ func MustRefresh() {
 	flat["installDirectory"] = installDir
 
 	if _, err := os.Stat(installDir); err != nil {
-		log.Fatalf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
+		log.Errorf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
+		panic(err)
 	}
 
 	// User overrides (json)

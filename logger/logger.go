@@ -7,9 +7,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/bugsnag/bugsnag-go"
 	"github.com/juju/loggo"
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/wolfeidau/bugsnag-go"
 	"github.com/wolfeidau/loggo-syslog"
 )
 
@@ -39,6 +39,23 @@ func init() {
 	}
 	// setup the syslog writer
 	loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
+
+}
+
+// BugsnagLogger used in bugsnag to ensure panics are written to the logger as well as bugsnag
+type BugsnagLogger struct {
+	loggo.Logger
+}
+
+// Printf used in bugsnag to ensure panics are written to the logger as well as bugsnag
+func (lw *BugsnagLogger) Printf(format string, v ...interface{}) {
+	lw.Logger.Warningf(format, v...)
+}
+
+// GetBugsnagLogger builds a wrapper for loggo which can be used by bugsnag.
+func GetBugsnagLogger(name string) *BugsnagLogger {
+	l := loggo.GetLogger(name)
+	return &BugsnagLogger{l}
 }
 
 // GetLogger builds a ninja logger with the given name
@@ -83,7 +100,7 @@ func (l *Logger) FatalErrorf(err error, msg string, args ...interface{}) {
 	os.Exit(1)
 }
 
-// FatalErrorf This notifies bugsnag and logs the error based on the args then quits
+// Fatalf This notifies bugsnag and logs the error based on the args then quits
 func (l *Logger) Fatalf(msg string, args ...interface{}) {
 	l.Errorf(msg, args)
 	bugsnag.Notify(fmt.Errorf(msg, args), bugsnag.MetaData{
