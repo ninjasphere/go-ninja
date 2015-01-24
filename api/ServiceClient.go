@@ -6,8 +6,10 @@ import (
 )
 
 type ServiceClient struct {
-	conn  *Connection
-	Topic string
+	conn             *Connection
+	Topic            string
+	SupportedEvents  []string
+	SupportedMethods []string
 }
 
 //

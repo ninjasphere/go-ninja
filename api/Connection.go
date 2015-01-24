@@ -152,7 +152,28 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 
 // GetServiceClient returns an RPC client for the given service.
 func (c *Connection) GetServiceClient(serviceTopic string) *ServiceClient {
-	return &ServiceClient{c, serviceTopic}
+	return &ServiceClient{
+		conn:  c,
+		Topic: serviceTopic,
+	}
+}
+
+// GetServiceClientWithSupported returns an RPC client for the given service.
+func (c *Connection) GetServiceClientFromAnnouncement(announcement model.ServiceAnnouncement) *ServiceClient {
+	client := &ServiceClient{
+		conn:  c,
+		Topic: announcement.Topic,
+	}
+
+	if announcement.SupportedEvents != nil {
+		client.SupportedEvents = *announcement.SupportedEvents
+	}
+
+	if announcement.SupportedEvents != nil {
+		client.SupportedMethods = *announcement.SupportedMethods
+	}
+
+	return client
 }
 
 // ExportApp Exports an app using the 'app' protocol, and announces it
