@@ -1,6 +1,7 @@
 package devices
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ninjasphere/go-ninja/api"
@@ -56,6 +57,9 @@ func (d *MediaPlayerDevice) UpdateVolumeState(state *channels.VolumeState) error
 }
 
 func (d *MediaPlayerDevice) SetMuted(muted bool) error {
+	if d.ApplyVolume == nil {
+		return errors.New("method is not supported")
+	}
 	return d.ApplyVolume(&channels.VolumeState{&d.volumeState, &muted})
 }
 
@@ -69,6 +73,9 @@ func (d *MediaPlayerDevice) ToggleMuted() error {
 }
 
 func (d *MediaPlayerDevice) SetVolume(volume *channels.VolumeState) error {
+	if d.ApplyVolume == nil {
+		return errors.New("method is not supported")
+	}
 	return d.ApplyVolume(volume)
 }
 
@@ -183,6 +190,13 @@ func (d *MediaPlayerDevice) EnableVolumeChannel(supportsMute bool) error {
 		supportedMethods = append(supportedMethods, "set", "volumeUp", "volumeDown")
 		if supportsMute {
 			supportedMethods = append(supportedMethods, "mute", "unmute")
+		}
+	} else {
+		if d.ApplyVolumeUp != nil {
+			supportedMethods = append(supportedMethods, "volumeUp")
+		}
+		if d.ApplyVolumeDown != nil {
+			supportedMethods = append(supportedMethods, "volumeDown")
 		}
 	}
 
