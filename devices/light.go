@@ -57,6 +57,7 @@ type LightDevice struct {
 	ApplyBrightness func(state float64) error
 	ApplyColor      func(state *channels.ColorState) error
 	ApplyTransition func(state int) error
+	ApplyIdentify   func() error
 
 	state      *LightDeviceState
 	batch      bool
@@ -66,6 +67,7 @@ type LightDevice struct {
 	brightness *channels.BrightnessChannel
 	color      *channels.ColorChannel
 	transition *channels.TransitionChannel
+	identify   *channels.IdentifyChannel
 }
 
 func (d *LightDevice) SetLightState(state *LightDeviceState) error {
@@ -141,6 +143,13 @@ func (d *LightDevice) SetOnOff(state bool) error {
 	}
 
 	return err
+}
+
+func (d *LightDevice) Identify() error {
+	if d.ApplyIdentify == nil {
+		return fmt.Errorf("Identify is not enabled on this device")
+	}
+	return d.ApplyIdentify()
 }
 
 func (d *LightDevice) SetBrightness(state float64) error {
@@ -269,6 +278,14 @@ func (d *LightDevice) EnableOnOffChannel() error {
 func (d *LightDevice) EnableBrightnessChannel() error {
 	d.brightness = channels.NewBrightnessChannel(d)
 	return d.conn.ExportChannel(d, d.brightness, "brightness")
+}
+
+func (d *LightDevice) EnableIdentifyChannel() error {
+	if d.ApplyIdentify == nil {
+		return fmt.Errorf("If you want to enable the identify channel, you must provide an applyIdentify function")
+	}
+	d.identify = channels.NewIdentifyChannel(d)
+	return d.conn.ExportChannel(d, d.identify, "identify")
 }
 
 func (d *LightDevice) EnableColorChannel(supportedModes ...string) error {

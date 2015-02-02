@@ -15,10 +15,6 @@ func NewIdentifyChannel(device IdentifyDevice) *IdentifyChannel {
 	}, device}
 }
 
-func (c *IdentifyChannel) SendState(state float64) error {
-	return c.SendEvent("state", state)
-}
-
 func (c *IdentifyChannel) Identify() error {
 	return c.device.Identify()
 }
