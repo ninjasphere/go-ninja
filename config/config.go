@@ -210,6 +210,14 @@ func MustRefresh() {
 		installDir = val.(string)
 	}
 
+	if _, err := os.Stat(installDir); err != nil {
+		// check for installation in snappy, apply different default path
+		snappAppPath := os.Getenv("SNAPP_APP_PATH")
+		if snappAppPath != "" {
+			installDir = snappAppPath
+		}
+	}
+
 	flat["installDirectory"] = installDir
 
 	if _, err := os.Stat(installDir); err != nil {
@@ -217,14 +225,22 @@ func MustRefresh() {
 		panic(err)
 	}
 
+	dataPath := "/data"
+	
+	// in snappy, we default to using the snappy data path
+	snappDataPath := os.Getenv("SNAPP_APP_DATA_PATH")
+	if snappDataPath != "" {
+		dataPath = snappDataPath
+	}
+
 	// User overrides (json)
-	addFile("/data/config.json", flat)
+	addFile(dataPath + "/config.json", flat)
 
 	// credentials file
-	addFile("/data/etc/opt/ninja/credentials.json", flat)
+	addFile(dataPath + "/etc/opt/ninja/credentials.json", flat)
 
 	// mesh file
-	addFile("/data/etc/opt/ninja/mesh.json", flat)
+	addFile(dataPath + "/etc/opt/ninja/mesh.json", flat)
 
 	// home directory environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {

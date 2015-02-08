@@ -20,25 +20,38 @@ type Logger struct {
 
 func init() {
 	var level loggo.Level
+	useSyslog := true
+
+	// snappy doesn't support syslog, so when we detect a snappy app we will disable syslog
+	// and leave the default stderr logger (which works because snappy uses systemd)
+	// eventually, the error case of syslog not existing should be exposed by loggo-syslog instead
+	if os.Getenv("SNAPP_APP_PATH") != "" {
+		useSyslog = false
+	}
+
 	if os.Getenv("DEBUG") != "" {
 		// if the magic debug variable exists...
 		level = loggo.DEBUG
 	} else {
 		// set the default level
 		level = loggo.INFO
-
+		
 		// kill stderr
 		log.SetOutput(ioutil.Discard)
 
-		// remove the default writer
-		loggo.RemoveWriter("default")
+		if useSyslog {
+			// remove the default writer
+			loggo.RemoveWriter("default")
+		}
 	}
 	loggo.GetLogger("").SetLogLevel(level)
 	if level != loggo.INFO {
 		loggo.GetLogger("").Infof("Root logger initialized at level %v", level)
 	}
 	// setup the syslog writer
-	loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
+	if useSyslog {
+		loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
+	}
 
 }
 
