@@ -31,8 +31,6 @@ func MustConnect(host, id string) Bus {
 	switch library {
 	case "tiny":
 		bus, err = ConnectTinyBus(host, id)
-	case "paho":
-		bus, err = ConnectPahoBus(host, id)
 	default:
 		log.Fatalf("Unknown mqtt bus implementation: %s", library)
 	}
