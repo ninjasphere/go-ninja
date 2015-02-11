@@ -15,7 +15,7 @@ type TinyBus struct {
 	baseBus
 	connecting    sync.WaitGroup
 	mqtt          *mqtt.ClientConn
-	subscriptions []*subscription
+	subscriptions []*Subscription
 	host          string
 	id            string
 }
@@ -23,7 +23,7 @@ type TinyBus struct {
 func ConnectTinyBus(host, id string) (*TinyBus, error) {
 
 	bus := &TinyBus{
-		subscriptions: make([]*subscription, 0),
+		subscriptions: make([]*Subscription, 0),
 		host:          host,
 		id:            id,
 	}
@@ -99,7 +99,9 @@ func (b *TinyBus) connect() {
 	b.connected()
 
 	for _, s := range b.subscriptions {
-		b.subscribe(s)
+		if !s.cancelled {
+			b.subscribe(s)
+		}
 	}
 
 	go func() {
@@ -117,7 +119,7 @@ func (b *TinyBus) connect() {
 
 func (b *TinyBus) onIncoming(message *proto.Publish) {
 	for _, sub := range b.subscriptions {
-		if matches(sub.topic, message.TopicName) {
+		if !sub.cancelled && matches(sub.topic, message.TopicName) {
 			go sub.callback(message.TopicName, []byte(message.Payload.(proto.BytesPayload)))
 		}
 	}
@@ -142,11 +144,17 @@ func (b *TinyBus) publish(message *proto.Publish) {
 	b.mqtt.Publish(message)
 }
 
-func (b *TinyBus) Subscribe(topic string, callback func(topic string, payload []byte)) (*subscription, error) {
+func (b *TinyBus) Subscribe(topic string, callback func(topic string, payload []byte)) (*Subscription, error) {
 
-	subscription := &subscription{
+	subscription := &Subscription{
 		topic:    topic,
 		callback: callback,
+	}
+
+	subscription.Cancel = func() {
+		// TODO: Actually unsubscribe if we were the only one listening
+		// TODO: Remove from from b.subscriptions
+		subscription.cancelled = true
 	}
 
 	err := b.subscribe(subscription)
@@ -159,7 +167,7 @@ func (b *TinyBus) Subscribe(topic string, callback func(topic string, payload []
 	return subscription, nil
 }
 
-func (b *TinyBus) subscribe(subscription *subscription) error {
+func (b *TinyBus) subscribe(subscription *Subscription) error {
 	_ = b.mqtt.Subscribe([]proto.TopicQos{proto.TopicQos{subscription.topic, proto.QosAtMostOnce}})
 	//spew.Dump("subscription ack", ack)
 	// TODO: Check ack

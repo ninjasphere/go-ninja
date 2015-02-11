@@ -11,7 +11,7 @@ var log = logger.GetLogger("bus")
 
 type Bus interface {
 	Publish(topic string, payload []byte)
-	Subscribe(topic string, callback func(topic string, payload []byte)) (*subscription, error)
+	Subscribe(topic string, callback func(topic string, payload []byte)) (*Subscription, error)
 	OnDisconnect(cb func())
 	OnConnect(cb func())
 	Connected() bool
@@ -41,9 +41,11 @@ func MustConnect(host, id string) Bus {
 	return bus
 }
 
-type subscription struct {
-	topic    string
-	callback func(topic string, payload []byte)
+type Subscription struct {
+	topic     string
+	callback  func(topic string, payload []byte)
+	Cancel    func()
+	cancelled bool
 }
 
 func matches(subscription string, topic string) bool {
