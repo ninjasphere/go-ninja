@@ -15,3 +15,18 @@ type Device struct {
 func (d *Device) GetServiceAnnouncement() *ServiceAnnouncement {
 	return &d.ServiceAnnouncement
 }
+
+func (d *Device) GetChannelsByProtocol(protocol string) []*Channel {
+
+	channels := []*Channel{}
+
+	if d.Channels != nil {
+		for _, channel := range *d.Channels {
+			if channel.Protocol == protocol {
+				channels = append(channels, channel)
+			}
+		}
+	}
+
+	return channels
+}
