@@ -21,7 +21,7 @@ type Bus interface {
 func MustConnect(host, id string) Bus {
 	//return ConnectTinyBus(host, id)
 
-	library := config.String("paho", "mqtt.implementation")
+	library := config.String("tiny", "mqtt.implementation")
 
 	log.Infof("Using mqtt bus implementation: %s", library)
 
