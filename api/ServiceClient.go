@@ -3,6 +3,8 @@ package ninja
 import (
 	"fmt"
 	"time"
+
+	"github.com/ninjasphere/go-ninja/bus"
 )
 
 type ServiceClient struct {
@@ -27,7 +29,7 @@ type ServiceClient struct {
 //
 // Both the params and topicKeys parameters can be omitted. If the topicKeys parameter is required, the params parameter must also be specified.
 //
-func (c *ServiceClient) OnEvent(event string, callback interface{}) error {
+func (c *ServiceClient) OnEvent(event string, callback interface{}) (*bus.Subscription, error) {
 	return c.conn.Subscribe(c.Topic+"/event/"+event, callback)
 }
 

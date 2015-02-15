@@ -74,27 +74,27 @@ type rpcMessage struct {
 //
 // The second parameter should be of type map[string]string and will contain one value for each place holder
 // specified in the topic string.
-func (c *Connection) Subscribe(topic string, callback interface{}) error {
+func (c *Connection) Subscribe(topic string, callback interface{}) (*bus.Subscription, error) {
 	log.Println("Subscribing to " + topic)
 	return c.subscribe(true, topic, callback)
 }
 
-func (c *Connection) SubscribeRaw(topic string, callback interface{}) error {
+func (c *Connection) SubscribeRaw(topic string, callback interface{}) (*bus.Subscription, error) {
 	return c.subscribe(false, topic, callback)
 }
 
-func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) error {
+func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) (*bus.Subscription, error) {
 
 	adapter, err := getAdapter(c.log, callback)
 	if err != nil {
 		c.log.FatalError(err, fmt.Sprintf("Incompatible callback function provided as callback for topic %s", topic))
-		return err
+		return nil, err
 	}
 
 	finished := false
 	mutex := &sync.Mutex{}
 
-	_, err = c.mqtt.Subscribe(GetSubscribeTopic(topic), func(incomingTopic string, payload []byte) {
+	return c.mqtt.Subscribe(GetSubscribeTopic(topic), func(incomingTopic string, payload []byte) {
 		// We lock so that the callback has a chance to return false,
 		// to prevent any more messages arriving on this subscription
 		mutex.Lock()
@@ -146,8 +146,6 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) err
 
 		}
 	})
-
-	return err
 }
 
 // GetServiceClient returns an RPC client for the given service.
