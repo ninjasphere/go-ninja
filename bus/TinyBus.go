@@ -113,7 +113,9 @@ func (b *TinyBus) connect() {
 	go func() {
 		<-conn.done
 		b.disconnected()
-		b.connect()
+		if !b.destroyed {
+			b.connect()
+		}
 	}()
 }
 
@@ -126,6 +128,7 @@ func (b *TinyBus) onIncoming(message *proto.Publish) {
 }
 
 func (b *TinyBus) Destroy() {
+	log.Infof("Destroy called")
 	b.destroyed = true
 	b.mqtt.Disconnect()
 }
