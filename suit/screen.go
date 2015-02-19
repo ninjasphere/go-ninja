@@ -62,6 +62,35 @@ type OptionGroupOption struct {
 	Selected bool
 }
 
+type Alert struct {
+	Title        string
+	Subtitle     string
+	DisplayClass string
+}
+
+func (o Alert) getType() string {
+	return "alert"
+}
+
+type ActionList struct {
+	Title           string
+	Subtitle        string
+	Name            string
+	Options         []ActionListOption
+	PrimaryAction   Typed
+	SecondaryAction Typed
+}
+
+func (o ActionList) getType() string {
+	return "actionList"
+}
+
+type ActionListOption struct {
+	Title    string
+	Subtitle string
+	Value    string
+}
+
 type InputTimeRange struct {
 	Title    string
 	Subtitle string
@@ -76,6 +105,15 @@ func (o InputTimeRange) getType() string {
 type TimeRange struct {
 	From string `json:"from"`
 	To   string `json:"to"`
+}
+
+type InputHidden struct {
+	Name  string
+	Value string
+}
+
+func (o InputHidden) getType() string {
+	return "inputHidden"
 }
 
 type CloseAction struct {
@@ -117,6 +155,13 @@ func walk(o interface{}) map[string]interface{} {
 
 		val := valueField.Interface()
 
+		valueField = reflect.ValueOf(val)
+
+		if valueField.Kind() == reflect.Ptr && !isZero(valueField) {
+			valueField = valueField.Elem()
+			val = valueField.Interface()
+		}
+
 		switch valueField.Kind() {
 		case reflect.Struct:
 			val = walk(val)
@@ -131,7 +176,7 @@ func walk(o interface{}) map[string]interface{} {
 				val = vals
 			}
 		default:
-			if valueField.Interface() == reflect.Zero(valueField.Type()).Interface() {
+			if isZero(valueField) {
 				val = nil
 			}
 		}
@@ -142,6 +187,10 @@ func walk(o interface{}) map[string]interface{} {
 	}
 
 	return m
+}
+
+func isZero(valueField reflect.Value) bool {
+	return valueField.Interface() == reflect.Zero(valueField.Type()).Interface()
 }
 
 func lF(s string) string {
