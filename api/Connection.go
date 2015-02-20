@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/bus"
@@ -92,12 +91,9 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) (*b
 	}
 
 	finished := false
-	mutex := &sync.Mutex{}
 
-	return c.mqtt.Subscribe(GetSubscribeTopic(topic), func(incomingTopic string, payload []byte) {
-		// We lock so that the callback has a chance to return false,
-		// to prevent any more messages arriving on this subscription
-		mutex.Lock()
+	var sub *bus.Subscription
+	sub, err = c.mqtt.Subscribe(GetSubscribeTopic(topic), func(incomingTopic string, payload []byte) {
 
 		// TODO: Implement unsubscribing. For now, it will just skip over any subscriptions that have finished
 		if finished {
@@ -106,46 +102,45 @@ func (c *Connection) subscribe(rpc bool, topic string, callback interface{}) (*b
 
 		values, ok := MatchTopicPattern(topic, incomingTopic)
 		if !ok {
-			c.log.Warningf("Failed to read params from topic: %s using template: %s", incomingTopic, topic)
-			mutex.Unlock()
-		} else {
+			//c.log.Warningf("Failed to read params from topic: %s using template: %s", incomingTopic, topic)
+			p := make(map[string]string)
+			values = &p
+		}
 
-			var params json.RawMessage
+		var params json.RawMessage
 
-			if rpc {
-				msg := &rpcMessage{}
-				err := json.Unmarshal(payload, msg)
+		if rpc {
+			msg := &rpcMessage{}
+			err := json.Unmarshal(payload, msg)
 
-				if err != nil {
-					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
-					return
-				}
-
-				json2.ReadRPCParams(msg.Params, &params)
-				if err != nil {
-					c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
-					return
-				}
-			} else {
-				err := json.Unmarshal(payload, &params)
-
-				if err != nil {
-					c.log.Warningf("Failed to read parameters in call to %s - %v", incomingTopic, err)
-					return
-				}
+			if err != nil {
+				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
+				return
 			}
 
-			// The callback needs to be run in a goroutine as blocking this thread prevents any other messages arriving
-			go func() {
-				if !adapter(&params, *values) {
-					// The callback has returned false, indicating that it does not want to receive any more messages.
-					finished = true
-				}
-				mutex.Unlock()
-			}()
+			json2.ReadRPCParams(msg.Params, &params)
+			if err != nil {
+				c.log.Warningf("Failed to read parameters in rpc call to %s - %v", incomingTopic, err)
+				return
+			}
+		} else {
+			err := json.Unmarshal(payload, &params)
 
+			if err != nil {
+				c.log.Warningf("Failed to read parameters in call to %s - %v", incomingTopic, err)
+				return
+			}
 		}
+
+		if !adapter(&params, *values) {
+			// The callback has returned false, indicating that it does not want to receive any more messages,
+			// so we can cancel the subscription.
+			sub.Cancel()
+		}
+
 	})
+
+	return sub, err
 }
 
 // GetServiceClient returns an RPC client for the given service.
