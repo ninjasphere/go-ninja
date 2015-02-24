@@ -42,6 +42,26 @@ func (o InputText) getType() string {
 	return "inputText"
 }
 
+type InputTime struct {
+	Title    string
+	Subtitle string
+	Before   string
+	After    string
+	Name     string
+	Value    string
+}
+
+func (o InputTime) getType() string {
+	return "inputTime"
+}
+
+type Separator struct {
+}
+
+func (o Separator) getType() string {
+	return "separator"
+}
+
 type OptionGroup struct {
 	Title          string
 	Subtitle       string
@@ -60,6 +80,24 @@ type OptionGroupOption struct {
 	Subtitle string
 	Value    string
 	Selected bool
+}
+
+type RadioGroup struct {
+	Title    string
+	Subtitle string
+	Name     string
+	Value    string
+	Options  []RadioGroupOption
+}
+
+func (o RadioGroup) getType() string {
+	return "radioGroup"
+}
+
+type RadioGroupOption struct {
+	Title       string
+	Value       string
+	DisplayIcon string
 }
 
 type Alert struct {
