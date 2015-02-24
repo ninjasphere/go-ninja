@@ -8,10 +8,11 @@ import (
 )
 
 type ConfigurationScreen struct {
-	Title    string
-	Subtitle string
-	Sections []Section
-	Actions  []Typed
+	Title       string
+	Subtitle    string
+	DisplayIcon string
+	Sections    []Section
+	Actions     []Typed
 }
 
 func (o *ConfigurationScreen) MarshalJSON() ([]byte, error) {
