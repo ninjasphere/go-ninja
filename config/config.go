@@ -226,7 +226,7 @@ func MustRefresh() {
 	}
 
 	dataPath := "/data"
-	
+
 	// in snappy, we default to using the snappy data path
 	snappDataPath := os.Getenv("SNAPP_APP_DATA_PATH")
 	if snappDataPath != "" {
@@ -234,13 +234,16 @@ func MustRefresh() {
 	}
 
 	// User overrides (json)
-	addFile(dataPath + "/config.json", flat)
+	addFile(dataPath+"/config.json", flat)
+
+	// Add site preference overrides
+	addFile(dataPath+"/etc/opt/ninja/site-preferences.json", flat)
 
 	// credentials file
-	addFile(dataPath + "/etc/opt/ninja/credentials.json", flat)
+	addFile(dataPath+"/etc/opt/ninja/credentials.json", flat)
 
 	// mesh file
-	addFile(dataPath + "/etc/opt/ninja/mesh.json", flat)
+	addFile(dataPath+"/etc/opt/ninja/mesh.json", flat)
 
 	// home directory environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {
