@@ -33,6 +33,34 @@ type MediaPlayerDevice struct {
 	mutedState    bool
 
 	mediaChannel *channels.MediaChannel
+
+	ApplyOn          func() error
+	ApplyOff         func() error
+	ApplyToggleOnOff func() error
+	onOff            *channels.OnOffChannel
+}
+
+func (d *MediaPlayerDevice) SetOnOff(state bool) error {
+	if state {
+		d.log.Infof("Turning On")
+		if d.ApplyOn == nil {
+			return fmt.Errorf("Turning on not supported")
+		}
+		return d.ApplyOn()
+	}
+
+	d.log.Infof("Turning Off")
+	if d.ApplyOff == nil {
+		return fmt.Errorf("Turning off not supported")
+	}
+	return d.ApplyOff()
+}
+
+func (d *MediaPlayerDevice) ToggleOnOff() error {
+	if d.ApplyOff == nil {
+		return fmt.Errorf("not supported")
+	}
+	return d.ApplyToggleOnOff()
 }
 
 func (d *MediaPlayerDevice) UpdateControlState(state channels.MediaControlEvent) error {
@@ -214,8 +242,39 @@ func (d *MediaPlayerDevice) EnableVolumeChannel(supportsMute bool) error {
 	return nil
 }
 
+func (d *MediaPlayerDevice) EnableOnOffChannel(supportedEvents ...string) error {
+
+	if d.ApplyOn == nil && d.ApplyOff == nil && d.ApplyToggleOnOff == nil {
+		return fmt.Errorf("No on-off methods provided")
+	}
+
+	supportedMethods := []string{}
+	if d.ApplyOn != nil || d.ApplyOff != nil {
+		supportedMethods = append(supportedMethods, "set")
+
+		if d.ApplyOn != nil {
+			supportedMethods = append(supportedMethods, "turnOn")
+		}
+
+		if d.ApplyOff != nil {
+			supportedMethods = append(supportedMethods, "turnOff")
+		}
+	}
+
+	if d.ApplyToggleOnOff != nil {
+		supportedMethods = append(supportedMethods, "toggle")
+	}
+
+	d.onOff = channels.NewOnOffChannel(d)
+	return d.conn.ExportChannelWithSupported(d, d.onOff, "on-off", &supportedEvents, &supportedMethods)
+}
+
 func (d *MediaPlayerDevice) UpdateMusicMediaState(item *channels.MusicTrackMediaItem, position *int) error {
 	return d.mediaChannel.SendMusicTrackState(item, position)
+}
+
+func (d *MediaPlayerDevice) UpdateOnOffState(state bool) error {
+	return d.onOff.SendEvent("state", state)
 }
 
 func (d *MediaPlayerDevice) EnableMediaChannel() error {
