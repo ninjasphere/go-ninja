@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -43,21 +44,39 @@ var serial string
 
 func Serial() string {
 	if serial == "" {
-		cmd := exec.Command("sphere-serial", os.Args[1:]...)
 
-		var out bytes.Buffer
-		cmd.Stdout = &out
+		switch runtime.GOOS {
+		case "darwin":
+			serial = darwinSerial()
+		default:
 
-		err := cmd.Run()
-		if err != nil {
-			log.Errorf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
-			panic(err)
+			cmd := exec.Command("sphere-serial", os.Args[1:]...)
+
+			var out bytes.Buffer
+			cmd.Stdout = &out
+
+			err := cmd.Run()
+			if err != nil {
+				log.Errorf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+				panic(err)
+			}
+
+			serial = out.String()
 		}
-
-		serial = out.String()
 	}
 
 	return serial
+}
+
+func darwinSerial() string {
+	cmd := exec.Command("/bin/sh", "-c", "system_profiler SPHardwareDataType | sed -n 's/.*Serial Number (system).*: /OSX/p'")
+	bytes, err := cmd.Output()
+	if err != nil {
+		log.Errorf("Failed to get darwin serial: %s ", err)
+		panic("No darwin serial")
+	}
+
+	return string(bytes[0 : len(bytes)-1])
 }
 
 func IsPaired() bool {
