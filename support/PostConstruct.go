@@ -13,7 +13,7 @@ type PostConstruct interface {
 
 // Given a list of injectable things, call the PostConstruct method of each if there is one. Fail on the first
 // one that fails.
-func PostConstructAll(injectables []interface{}) error {
+func PostConstructAll(injectables ...interface{}) error {
 	// Run PostConstruct on any objects that have it
 	for _, node := range injectables {
 		if pc, ok := node.(PostConstruct); ok {
