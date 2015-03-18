@@ -398,3 +398,15 @@ func getUserHome() string {
 	}
 	return usr.HomeDir
 }
+
+func IsSlave() bool {
+	masterNodeId := String("", "masterNodeId")
+	serial := Serial()
+	return masterNodeId != "" && serial != masterNodeId
+}
+
+func IsMaster() bool {
+	masterNodeId := String("", "masterNodeId")
+	serial := Serial()
+	return masterNodeId != "" && serial == masterNodeId
+}
