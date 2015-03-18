@@ -43,12 +43,12 @@ func GetAll(flatten bool) map[string]interface{} {
 var serial string
 
 func Serial() string {
+
 	if serial == "" {
 
-		switch runtime.GOOS {
-		case "darwin":
-			serial = darwinSerial()
-		default:
+		if HasString("serial") {
+			serial = String("serial")
+		} else {
 
 			cmd := exec.Command("sphere-serial", os.Args[1:]...)
 
@@ -56,12 +56,18 @@ func Serial() string {
 			cmd.Stdout = &out
 
 			err := cmd.Run()
-			if err != nil {
-				log.Errorf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
-				panic(err)
+			if err == nil {
+				serial = out.String()
+			} else {
+
+				if runtime.GOOS == "darwin" {
+					serial = darwinSerial()
+				} else {
+					log.Errorf("Failed to get sphere serial (sphere-serial must be in the PATH) error:%s", err)
+					panic(err)
+				}
 			}
 
-			serial = out.String()
 		}
 	}
 
