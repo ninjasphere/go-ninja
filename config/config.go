@@ -125,6 +125,15 @@ func MustInt(path ...string) int {
 	return int(mustGet(path...).(float64))
 }
 
+// Float returns the float property at the path, with a default
+func Float(def float64, path ...string) float64 {
+	val := get(path...)
+	if val == nil {
+		return def
+	}
+	return val.(float64)
+}
+
 func MustFloat(path ...string) float64 {
 	return mustGet(path...).(float64)
 }
