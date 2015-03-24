@@ -188,6 +188,10 @@ func (o ReplyAction) getType() string {
 	return "reply"
 }
 
+func (o *ReplyAction) MarshalJSON() ([]byte, error) {
+	return json.Marshal(walk(*o))
+}
+
 type Typed interface {
 	getType() string
 }
