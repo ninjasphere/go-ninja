@@ -30,6 +30,7 @@ type Connection struct {
 	log       *logger.Logger
 	rpc       *rpc.Client
 	rpcServer *rpc.Server
+	services  []model.ServiceAnnouncement
 }
 
 // Connect Builds a new ninja connection to the MQTT broker, using the given client ID
@@ -37,7 +38,10 @@ func Connect(clientID string) (*Connection, error) {
 
 	log := logger.GetLogger(fmt.Sprintf("%s.connection", clientID))
 
-	conn := Connection{log: log}
+	conn := Connection{
+		log:      log,
+		services: []model.ServiceAnnouncement{},
+	}
 
 	mqttURL := fmt.Sprintf("%s:%d", config.MustString("mqtt", "host"), config.MustInt("mqtt", "port"))
 
@@ -49,6 +53,13 @@ func Connect(clientID string) (*Connection, error) {
 
 	conn.rpc = rpc.NewClient(conn.mqtt, json2.NewClientCodec())
 	conn.rpcServer = rpc.NewServer(conn.mqtt, json2.NewCodec())
+
+	// Add service discovery service. Responds to queries about services exposed in this process.
+	discoveryService := &discoverService{&conn}
+	_, err := conn.exportService(discoveryService, "$discover", &simpleService{*discoveryService.GetServiceAnnouncement()})
+	if err != nil {
+		log.Fatalf("Could not expose discovery service: %s", err)
+	}
 
 	return &conn, nil
 }
@@ -268,7 +279,7 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	topic := fmt.Sprintf("$device/%s/channel/%s", device.GetDeviceInfo().ID, id)
 
 	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema:           c.resolveProtocolURI(channel.GetProtocol()),
+		Schema:           resolveProtocolURI(channel.GetProtocol()),
 		SupportedMethods: supportedMethods,
 		SupportedEvents:  supportedEvents,
 	}
@@ -342,6 +353,8 @@ type serviceAnnouncement interface {
 // exportService Exports an RPC service, and announces it over TOPIC/event/announce
 func (c *Connection) exportService(service interface{}, topic string, announcement serviceAnnouncement) (*rpc.ExportedService, error) {
 
+	announcement.GetServiceAnnouncement().Schema = resolveSchemaURI(announcement.GetServiceAnnouncement().Schema)
+
 	exportedService, err := c.rpcServer.RegisterService(service, topic, announcement.GetServiceAnnouncement().Schema)
 
 	if err != nil {
@@ -386,6 +399,8 @@ func (c *Connection) exportService(service interface{}, topic string, announceme
 			return err
 		})
 	}
+
+	c.services = append(c.services, *announcement.GetServiceAnnouncement())
 
 	return exportedService, nil
 }
@@ -433,19 +448,19 @@ func (c *Connection) SendNotification(topic string, params ...interface{}) error
 var rootSchemaURL, _ = url.Parse("http://schema.ninjablocks.com")
 var protocolSchemaURL, _ = url.Parse("http://schema.ninjablocks.com/protocol/")
 
-func (c *Connection) resolveSchemaURI(uri string) string {
-	return c.resolveSchemaURIWithBase(rootSchemaURL, uri)
+func resolveSchemaURI(uri string) string {
+	return resolveSchemaURIWithBase(rootSchemaURL, uri)
 }
 
-func (c *Connection) resolveProtocolURI(uri string) string {
-	return c.resolveSchemaURIWithBase(protocolSchemaURL, uri)
+func resolveProtocolURI(uri string) string {
+	return resolveSchemaURIWithBase(protocolSchemaURL, uri)
 }
 
-func (c *Connection) resolveSchemaURIWithBase(base *url.URL, uri string) string {
+func resolveSchemaURIWithBase(base *url.URL, uri string) string {
 
 	u, err := url.Parse(uri)
 	if err != nil {
-		c.log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
+		log.Fatalf("Expected URL to parse: %q, got error: %v", uri, err)
 	}
 	return base.ResolveReference(u).String()
 }
