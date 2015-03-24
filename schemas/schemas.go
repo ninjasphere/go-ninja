@@ -73,7 +73,7 @@ func GetServiceMethods(service string) ([]string, error) {
 	doc, err := GetDocument(service+"#/methods", true)
 
 	if err != nil && fmt.Sprintf("%s", err) != "Object has no key 'methods'" {
-		return nil, err
+		return nil, fmt.Errorf("Failed to load schema %s : %s", service, err)
 	}
 
 	methods := make([]string, 0, len(doc))
