@@ -212,6 +212,10 @@ func walk(o interface{}) map[string]interface{} {
 
 		val := valueField.Interface()
 
+		if val == nil {
+			continue
+		}
+
 		valueField = reflect.ValueOf(val)
 
 		if valueField.Kind() == reflect.Ptr && !isZero(valueField) {
