@@ -192,6 +192,15 @@ func (o *ReplyAction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(walk(*o))
 }
 
+type AutomaticAction struct {
+	Name  string
+	Delay int
+}
+
+func (o AutomaticAction) getType() string {
+	return "auto"
+}
+
 type Typed interface {
 	getType() string
 }
