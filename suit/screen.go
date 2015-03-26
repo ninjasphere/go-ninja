@@ -119,6 +119,7 @@ type Alert struct {
 	Title        string
 	Subtitle     string
 	DisplayClass string
+	DisplayIcon  string
 }
 
 func (o Alert) getType() string {
