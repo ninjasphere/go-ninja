@@ -41,6 +41,7 @@ func GetAll(flatten bool) map[string]interface{} {
 }
 
 var serial string
+var sphereVersion string
 
 func Serial() string {
 
@@ -83,6 +84,31 @@ func darwinSerial() string {
 	}
 
 	return string(bytes[0 : len(bytes)-1])
+}
+
+func SphereVersion() string {
+	if sphereVersion == "" {
+		if HasString("sphere-version") {
+
+			sphereVersion = String("sphere-version")
+
+		} else {
+
+			cmd := exec.Command("sphere-version", os.Args[1:]...)
+
+			var out bytes.Buffer
+			cmd.Stdout = &out
+
+			err := cmd.Run()
+			if err != nil {
+				log.Errorf("Failed to get sphere version (sphere-version must be in the PATH) error:%s", err)
+				panic(err)
+			}
+			sphereVersion = out.String()
+		}
+
+	}
+	return sphereVersion
 }
 
 func IsPaired() bool {
