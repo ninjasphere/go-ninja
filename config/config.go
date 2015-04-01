@@ -104,7 +104,7 @@ func SphereVersion() string {
 				log.Errorf("Failed to get sphere version (sphere-version must be in the PATH) error:%s", err)
 				panic(err)
 			}
-			sphereVersion = out.String()
+			sphereVersion = strings.TrimSpace(out.String())
 		}
 
 	}
