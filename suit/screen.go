@@ -202,6 +202,19 @@ func (o AutomaticAction) getType() string {
 	return "auto"
 }
 
+type ProgressBar struct {
+	Title        string
+	Subtitle     string
+	Label        string
+	Progress     int /* percentage */
+	DisplayClass string
+	DisplayIcon  string
+}
+
+func (o ProgressBar) getType() string {
+	return "progressBar"
+}
+
 type Typed interface {
 	getType() string
 }
