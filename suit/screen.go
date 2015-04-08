@@ -43,6 +43,18 @@ func (o InputText) getType() string {
 	return "inputText"
 }
 
+type StaticText struct {
+	Title    string
+	Subtitle string
+	Before   string
+	After    string
+	Value    string
+}
+
+func (o StaticText) getType() string {
+	return "staticText"
+}
+
 type InputCheckbox struct {
 	Title    string
 	Subtitle string
