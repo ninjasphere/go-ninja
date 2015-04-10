@@ -121,70 +121,89 @@ func lF(s string) string {
 	return string(unicode.ToLower(r)) + s[n:]
 }
 
+// hydrate a slice from an unhydrated slice, applying the makeTyped() method as required to
+// resolve type names into instances of concrete struct types.
+func hydrateSlice(unhyrdatedSlice reflect.Value, ft reflect.StructField) (reflect.Value, error) {
+	mfv := unhyrdatedSlice
+	if mfv.Type() != ft.Type {
+		tmp := reflect.MakeSlice(ft.Type, mfv.Len(), mfv.Len())
+		for j := 0; j < mfv.Len(); j++ {
+			p := mfv.Index(j)
+			vp := reflect.Indirect(p)
+			vpMap := vp.Interface().(map[string]interface{})
+			if ft.Type.Elem().Kind() == reflect.Interface {
+				if typeName, ok := vpMap["type"].(string); ok {
+					if typed, err := makeTyped(typeName); err != nil {
+						return mfv, err
+					} else {
+						if err := hydrate(vpMap, typed); err != nil {
+							return mfv, err
+						}
+						tmp.Index(j).Set(reflect.ValueOf(typed).Elem())
+					}
+				} else {
+					return mfv, fmt.Errorf("hydrateSlice: trying to unmarshall interface, but no 'type' available")
+				}
+			} else {
+				if err := hydrate(vpMap, tmp.Index(j).Addr().Interface()); err != nil {
+					return mfv, err
+				}
+			}
+		}
+		mfv = tmp
+	}
+	return mfv, nil
+}
+
+// hydrate the i'th field of the value from a map entry
+func hydrateField(s map[string]interface{}, v reflect.Value, i int) error {
+	var err error
+	var mfv reflect.Value
+	fv := v.Field(i)
+	ft := v.Type().Field(i)
+
+	if sv, ok := s[lF(ft.Name)]; ok && sv != nil {
+		mfv = reflect.ValueOf(sv)
+		switch ft.Type.Kind() {
+		case reflect.Struct:
+			if svMap, ok := sv.(map[string]interface{}); !ok {
+				return fmt.Errorf("failed to convert value to map")
+			} else {
+				if err := hydrate(svMap, fv.Addr().Interface()); err != nil {
+					return fmt.Errorf("hydrateField: failed to hydrate %+v", ft)
+				}
+				return nil
+			}
+		case reflect.Slice:
+			if mfv.Kind() != reflect.Slice {
+				return fmt.Errorf("hydrateField: while processing '%+v': failed to map '%v' to slice: value=%v", ft.Name, mfv.Kind(), fv)
+			} else {
+				if mfv, err = hydrateSlice(mfv, ft); err != nil {
+					return err
+				}
+			}
+		case reflect.Ptr:
+			nfv := reflect.New(ft.Type.Elem())
+			reflect.Indirect(nfv).Set(mfv.Convert(ft.Type.Elem()))
+			mfv = nfv
+		}
+	} else {
+		mfv = reflect.Zero(ft.Type)
+	}
+
+	fv.Set(mfv.Convert(ft.Type))
+	return nil
+}
+
+// hydrate the specified object from the contents of the map
 func hydrate(s map[string]interface{}, o interface{}) error {
 	v := reflect.ValueOf(o).Elem()
 	switch v.Kind() {
 	case reflect.Struct:
-		t := v.Type()
 		for i := 0; i < v.NumField(); i++ {
-			var mfv reflect.Value
-			fv := v.Field(i)
-			ft := t.Field(i)
-
-			if sv, ok := s[lF(ft.Name)]; ok && sv != nil {
-				mfv = reflect.ValueOf(sv)
-				switch ft.Type.Kind() {
-				case reflect.Struct:
-					if svMap, ok := sv.(map[string]interface{}); !ok {
-						return fmt.Errorf("failed to convert value to map")
-					} else {
-						if err := hydrate(svMap, fv.Addr().Interface()); err != nil {
-							return fmt.Errorf("failed to hydrate %+v", ft)
-						}
-						continue
-					}
-				case reflect.Slice:
-					if mfv.Kind() != reflect.Slice {
-						return fmt.Errorf("hydrate: while processing '%s': failed to map '%v' to slice: value=%v", ft.Name, mfv.Kind(), fv)
-					} else {
-						if mfv.Type() != ft.Type {
-							tmp := reflect.MakeSlice(ft.Type, mfv.Len(), mfv.Len())
-							for j := 0; j < mfv.Len(); j++ {
-								p := mfv.Index(j)
-								vp := reflect.Indirect(p)
-								vpMap := vp.Interface().(map[string]interface{})
-								if ft.Type.Elem().Kind() == reflect.Interface {
-									if typeName, ok := vpMap["type"].(string); ok {
-										if typed, err := makeTyped(typeName); err != nil {
-											return err
-										} else {
-											if err := hydrate(vpMap, typed); err != nil {
-												return err
-											}
-											tmp.Index(j).Set(reflect.ValueOf(typed).Elem())
-										}
-									} else {
-										return fmt.Errorf("trying to unmarshall interface, but no type available")
-									}
-								} else {
-									if err := hydrate(vpMap, tmp.Index(j).Addr().Interface()); err != nil {
-										return err
-									}
-								}
-							}
-							mfv = tmp
-						}
-					}
-				case reflect.Ptr:
-					nfv := reflect.New(ft.Type.Elem())
-					reflect.Indirect(nfv).Set(mfv.Convert(ft.Type.Elem()))
-					mfv = nfv
-				}
-			} else {
-				mfv = reflect.Zero(ft.Type)
+			if err := hydrateField(s, v, i); err != nil {
+				return err
 			}
-
-			fv.Set(mfv.Convert(ft.Type))
 		}
 		return nil
 	default:
