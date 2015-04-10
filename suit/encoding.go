@@ -176,7 +176,9 @@ func hydrate(s map[string]interface{}, o interface{}) error {
 						}
 					}
 				case reflect.Ptr:
-					mfv = mfv.Addr()
+					nfv := reflect.New(ft.Type.Elem())
+					reflect.Indirect(nfv).Set(mfv.Convert(ft.Type.Elem()))
+					mfv = nfv
 				}
 			} else {
 				mfv = reflect.Zero(ft.Type)
