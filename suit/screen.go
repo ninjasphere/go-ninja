@@ -294,18 +294,34 @@ func (o *ConfigurationScreen) UnmarshalJSON(bytes []byte) error {
 
 func makeTyped(typeName string) (interface{}, error) {
 	switch typeName {
+	case "actionList":
+		return &ActionList{}, nil
+	case "alert":
+		return &Alert{}, nil
+	case "auto":
+		return &AutomaticAction{}, nil
+	case "close":
+		return &CloseAction{}, nil
+	case "inputHidden":
+		return &InputHidden{}, nil
 	case "inputText":
 		return &InputText{}, nil
-	case "staticText":
-		return &StaticText{}, nil
+	case "inputTime":
+		return &InputTime{}, nil
 	case "inputTimeRange":
 		return &InputTimeRange{}, nil
 	case "optionGroup":
 		return &OptionGroup{}, nil
-	case "close":
-		return &CloseAction{}, nil
+	case "progressBar":
+		return &ProgressBar{}, nil
+	case "radioGroup":
+		return &RadioGroup{}, nil
 	case "reply":
 		return &ReplyAction{}, nil
+	case "separator":
+		return &Separator{}, nil
+	case "staticText":
+		return &StaticText{}, nil
 	default:
 		return nil, fmt.Errorf("can't make object for type: %s", typeName)
 	}
