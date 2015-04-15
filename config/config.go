@@ -112,6 +112,9 @@ func SphereVersion() string {
 }
 
 func IsPaired() bool {
+	if Bool(false, "clearsky") {
+		return true
+	}
 	return /*HasString("sphereNetworkKey") && */ HasString("token") && HasString("userId")
 }
 
