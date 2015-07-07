@@ -112,10 +112,11 @@ func SphereVersion() string {
 }
 
 func IsPaired() bool {
-	if Bool(false, "clearsky") {
-		return true
-	}
 	return /*HasString("sphereNetworkKey") && */ HasString("token") && HasString("userId")
+}
+
+func NoCloud() bool {
+	return Bool(false, "noCloud")
 }
 
 func String(def string, path ...string) string {
@@ -329,6 +330,14 @@ func MustRefresh() {
 	//log.Debugf("Loaded config: %v", flat)
 
 	config = flat
+
+	if NoCloud() {
+		config["userId"] = "nouser"
+		config["token"] = "notoken"
+		config["sphereNetworkKey"] = "nonetworkkey"
+		config["siteId"] = "nomesh" + Serial()
+		config["masterNodeId"] = Serial()
+	}
 }
 
 func addEnv(config map[string]interface{}) {
