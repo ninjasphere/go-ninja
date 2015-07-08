@@ -2,7 +2,7 @@ package channels
 
 type DemandState struct {
 	Rated        *float64 `json:"rated,omitempty"`        // rated maximum power, in Watts
-	FullLoad     *float64 `json:"fullload,omitempty"`     // historical maximum load (may be higher than rated load)
+	ObservedMax  *float64 `json:"observedMax,omitempty"`  // the observed max current power for this device
 	Current      *float64 `json:"current,omitempty"`      // average power for current period
 	Peak         *float64 `json:"peak,omitempty"`         // peak instantaneous power in averaging period
 	Goal         *float64 `json:"goal,omitempty"`         // goal power for averaging period
