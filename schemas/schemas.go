@@ -114,6 +114,8 @@ type TimeSeriesDatapoint struct {
 	Type  string      `json:"type"`
 }
 
+var timeSeriesPaths = make(map[string]string)
+
 /*
 * GetEventTimeSeriesData converts an event payload to 0..n time series data points.
 * NOTE: The payload must already have been validated. No validation is done here.
@@ -132,26 +134,24 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 
 	var timeseriesData = make([]TimeSeriesDatapoint, 0)
 
-	eventSchema, err := GetDocument(serviceSchemaUri+"#/events/"+event, true)
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't retrieve event schema: %s event: %s error: %s", serviceSchemaUri, event, err)
-	}
-
 	log.Debugf("Finding time series data for service: %s event: %s from payload: %v", serviceSchemaUri, event, value)
 
-	if _, ok := eventSchema["value"]; ok {
-		// The event emits a value.
-		flat := flatten(value, nil, nil)
+	flat := flatten(value, nil, nil)
 
-		for _, point := range flat {
-			log.Debugf("-- Checking: %v", point)
+	for _, point := range flat {
+		log.Debugf("-- Checking: %v", point)
 
-			refPath := fmt.Sprintf("#/events/%s/value", event)
-			if len(point.path) > 0 {
-				// Not the root value
-				refPath = strings.Join(append([]string{refPath}, point.path...), "/properties/")
-			}
-			log.Debugf("Created path %s", refPath)
+		refPath := "#/events/" + event + "/value"
+		if len(point.path) > 0 {
+			// Not the root value
+			refPath = strings.Join(append([]string{refPath}, point.path...), "/properties/")
+		}
+		log.Debugf("Created path %s", refPath)
+
+		var timeseriesType string
+		timeseriesType, ok := timeSeriesPaths[refPath]
+
+		if !ok {
 
 			pointSchema, err := GetDocument(serviceSchemaUri+refPath, true)
 
@@ -159,23 +159,27 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 				// As the data has been validated, this *shouldn't* happen. BUT we might be allowing unknown properties through.
 				log.Warningf("Unknown property %s in service %s event %s. error: %s", refPath, serviceSchemaUri, event, err)
 			} else {
-
-				if timeseriesType, ok := pointSchema["timeseries"]; ok {
-
-					dp := TimeSeriesDatapoint{
-						Path: strings.Join(point.path, "."),
-						Type: timeseriesType.(string),
-					}
-
-					if timeseriesType == "value" || timeseriesType == "boolean" {
-						dp.Value = point.value
-					}
-
-					// The only other type is 'event', which doesn't have or need a value
-
-					timeseriesData = append(timeseriesData, dp)
-				}
+				timeseriesType, ok = pointSchema["timeseries"].(string)
 			}
+
+			timeSeriesPaths[refPath] = timeseriesType
+		}
+
+		if ok && timeseriesType != "" {
+
+			dp := TimeSeriesDatapoint{
+				Path: strings.Join(point.path, "."),
+				Type: timeseriesType,
+			}
+
+			if timeseriesType == "value" || timeseriesType == "boolean" {
+				dp.Value = point.value
+			}
+
+			// The only other type is 'event', which doesn't have or need a value
+
+			timeseriesData = append(timeseriesData, dp)
+
 		}
 	}
 
