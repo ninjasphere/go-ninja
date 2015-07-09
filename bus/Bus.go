@@ -41,9 +41,14 @@ func MustConnect(host, id string) Bus {
 	return bus
 }
 
+type message struct {
+	topic   string
+	payload []byte
+}
+
 type Subscription struct {
 	topic     string
-	callback  func(topic string, payload []byte)
+	c         chan *message
 	Cancel    func()
 	cancelled bool
 }

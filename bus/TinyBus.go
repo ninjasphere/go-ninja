@@ -119,10 +119,11 @@ func (b *TinyBus) connect() {
 	}()
 }
 
-func (b *TinyBus) onIncoming(message *proto.Publish) {
+func (b *TinyBus) onIncoming(msg *proto.Publish) {
+
 	for _, sub := range b.subscriptions {
-		if !sub.cancelled && matches(sub.topic, message.TopicName) {
-			go sub.callback(message.TopicName, []byte(message.Payload.(proto.BytesPayload)))
+		if !sub.cancelled && matches(sub.topic, msg.TopicName) {
+			sub.c <- &message{msg.TopicName, []byte(msg.Payload.(proto.BytesPayload))}
 		}
 	}
 }
@@ -150,9 +151,18 @@ func (b *TinyBus) publish(message *proto.Publish) {
 func (b *TinyBus) Subscribe(topic string, callback func(topic string, payload []byte)) (*Subscription, error) {
 
 	subscription := &Subscription{
-		topic:    topic,
-		callback: callback,
+		topic: topic,
+		c:     make(chan *message),
 	}
+
+	go func() {
+		for m := range subscription.c {
+			if subscription.cancelled {
+				break
+			}
+			callback(m.topic, m.payload)
+		}
+	}()
 
 	subscription.Cancel = func() {
 		// TODO: Actually unsubscribe if we were the only one listening
