@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/bus"
+	"github.com/ninjasphere/go-ninja/clock"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -169,7 +170,7 @@ func (client *Client) CallWithTimeout(topic string, serviceMethod string, args i
 	if err != nil {
 		return err
 	}
-	sentTime := time.Now()
+	sentTime := clock.GetClock().Now()
 
 	log.Debugf("id:%d -  Waiting for reply", call.ID)
 

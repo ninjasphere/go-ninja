@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/bus"
+	"github.com/ninjasphere/go-ninja/clock"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/rpc"
 )
@@ -280,7 +281,7 @@ func (c *CodecRequest) writeServerResponse(client bus.Bus, res *serverResponse) 
 }
 
 func makeTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+	return clock.GetClock().Now().UnixNano() / int64(time.Millisecond)
 }
 
 type EmptyResponse struct {
