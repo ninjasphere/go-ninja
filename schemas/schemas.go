@@ -134,35 +134,57 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 
 	var timeseriesData = make([]TimeSeriesDatapoint, 0)
 
-	log.Debugf("Finding time series data for service: %s event: %s from payload: %v", serviceSchemaUri, event, value)
+	//log.Debugf("Finding time series data for service: %s event: %s from payload: %v", serviceSchemaUri, event, value)
 
 	flat := flatten(value, nil, nil)
 
 	for _, point := range flat {
-		log.Debugf("-- Checking: %v", point)
+		//log.Debugf("-- Checking: %v", point)
 
 		refPath := "#/events/" + event + "/value"
+
+		key := refPath
 		if len(point.path) > 0 {
-			// Not the root value
-			refPath = strings.Join(append([]string{refPath}, point.path...), "/properties/")
+			key = strings.Join(append([]string{refPath}, point.path...), "/properties/")
 		}
-		log.Debugf("Created path %s", refPath)
+
+		//log.Debugf("Created path %s", key)
 
 		var timeseriesType string
-		timeseriesType, ok := timeSeriesPaths[refPath]
+		timeseriesType, ok := timeSeriesPaths[key]
 
 		if !ok {
 
 			pointSchema, err := GetDocument(serviceSchemaUri+refPath, true)
 
+			for _, property := range point.path {
+
+				props, ok := pointSchema["properties"].(map[string]interface{})
+				if !ok {
+					log.Warningf("Unknown property %s in service %s event %s. error: %s", property, serviceSchemaUri, event, err)
+					ok = false
+				}
+
+				pointSchema, ok = props[property].(map[string]interface{})
+
+				pointSchema, err = resolve(serviceSchemaUri+refPath, pointSchema)
+
+				if !ok {
+					log.Warningf("Unknown property %s in service %s event %s. error: %s", property, serviceSchemaUri, event, err)
+					ok = false
+				}
+
+			}
+
 			if err != nil {
 				// As the data has been validated, this *shouldn't* happen. BUT we might be allowing unknown properties through.
 				log.Warningf("Unknown property %s in service %s event %s. error: %s", refPath, serviceSchemaUri, event, err)
+				ok = false
 			} else {
 				timeseriesType, ok = pointSchema["timeseries"].(string)
 			}
 
-			timeSeriesPaths[refPath] = timeseriesType
+			timeSeriesPaths[key] = timeseriesType
 		}
 
 		if ok && timeseriesType != "" {
@@ -215,7 +237,9 @@ func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, 
 	mapDoc := document.(map[string]interface{})
 
 	if resolveRefs {
-		if ref, ok := mapDoc["$ref"]; ok && ref != "" {
+
+		return resolve(documentURL, mapDoc)
+		/*if ref, ok := mapDoc["$ref"]; ok && ref != "" {
 			log.Debugf("Got $ref: %s", ref)
 			var resolvedRef, err = resolveUrl(resolvedURL.GetUrl(), ref.(string))
 			log.Debugf("resolved %s to %s", ref.(string), resolvedRef.GetUrl().String())
@@ -223,10 +247,31 @@ func GetDocument(documentURL string, resolveRefs bool) (map[string]interface{}, 
 				return nil, err
 			}
 			return GetDocument(resolvedRef.String(), true)
-		}
+		}*/
 	}
 
 	return mapDoc, nil
+}
+
+func resolve(documentURL string, doc map[string]interface{}) (map[string]interface{}, error) {
+
+	if ref, ok := doc["$ref"]; ok && ref != "" {
+		log.Debugf("Got $ref: %s", ref)
+
+		resolvedURL, err := resolveUrl(rootURL, documentURL)
+		if err != nil {
+			return nil, err
+		}
+
+		resolvedRef, err := resolveUrl(resolvedURL.GetUrl(), ref.(string))
+		log.Debugf("resolved %s to %s", ref.(string), resolvedRef.GetUrl().String())
+		if err != nil {
+			return nil, err
+		}
+		return GetDocument(resolvedRef.String(), true)
+	}
+
+	return doc, nil
 }
 
 type schemaResponse struct {
