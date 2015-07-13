@@ -14,7 +14,11 @@ import (
 
 	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/schemas"
+	"github.com/ninjasphere/redigo/redis"
 )
+
+// XXX: This is ugly...
+var RedisPool *redis.Pool
 
 // ----------------------------------------------------------------------------
 // Codec
@@ -234,6 +238,16 @@ func (s *Server) serveRequest(topic string, payload []byte) {
 		} else {
 			params = append(params, args.Elem())
 		}
+	}
+
+	if methodSpec.hasRedisConn {
+		if RedisPool == nil {
+			panic("If RPC methods ask for a redis connection, you must set the pool at rpc.RedisPool")
+		}
+
+		conn := RedisPool.Get()
+		defer conn.Close()
+		params = append(params, reflect.ValueOf(conn))
 	}
 
 	/*var reply reflect.Value

@@ -13,6 +13,8 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/ninjasphere/redigo/redis"
 )
 
 var (
@@ -33,9 +35,10 @@ type service struct {
 }
 
 type serviceMethod struct {
-	method    reflect.Method // receiver method
-	argsType  reflect.Type   // type of the request argument
-	replyType reflect.Type   // type of the response argument
+	method       reflect.Method // receiver method
+	argsType     reflect.Type   // type of the request argument
+	replyType    reflect.Type   // type of the response argument
+	hasRedisConn bool
 }
 
 // ----------------------------------------------------------------------------
@@ -96,10 +99,14 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 			continue
 		}
 
-		// Method must have no or one arguments
-		if mtype.NumIn() > 2 {
-			//log.Infof("Wrong number: %s", method.Name)
+		var hasRedisConn = false
+		if (mtype.NumIn() == 2 || mtype.NumIn() == 3) && mtype.In(mtype.NumIn()-1).Implements(reflect.TypeOf((*redis.Conn)(nil)).Elem()) {
+			hasRedisConn = true
+		}
 
+		// Method must have no or one arguments (plus optional redis connection)
+		if mtype.NumIn() > 2 && !hasRedisConn {
+			//log.Infof("Wrong number: %s", method.Name)
 			continue
 		}
 
@@ -111,7 +118,7 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 
 		// The one argument (args) must be a pointer and must be exported, if its there
 		var args reflect.Type
-		if mtype.NumIn() == 2 {
+		if mtype.NumIn() > 1 {
 			args = mtype.In(1)
 			if !isExportedOrBuiltin(args) {
 				log2.Fatalf("RPC Method %s.%s arguments must be exported", name, method.Name)
@@ -143,7 +150,8 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 		}
 
 		s.methods[method.Name] = &serviceMethod{
-			method: method,
+			method:       method,
+			hasRedisConn: hasRedisConn,
 		}
 		if reply != nil {
 			s.methods[method.Name].replyType = reply.Elem()
