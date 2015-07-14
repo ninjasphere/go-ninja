@@ -36,19 +36,17 @@ func (c *realClock) NewTimer(d time.Duration) *time.Timer {
 }
 
 type simulatedClock struct {
+	realEpoch time.Time
 	epoch     time.Time
-	epochDiff time.Duration
 	speedup   int
 }
 
-const DEFAULT_EPOCH_DIFF = 86400 * 365 * 10
-
 // Answer a clock in which real time after the epoch time is sped up by the specified amount.
-func NewSimulatedClock(epoch time.Time, speedup int, epochDiff time.Duration) Clock {
+func NewSimulatedClock(epoch time.Time, speedup int) Clock {
 	return &simulatedClock{
 		epoch:     epoch,
 		speedup:   speedup,
-		epochDiff: epochDiff,
+		realEpoch: time.Now(),
 	}
 }
 
@@ -57,7 +55,7 @@ func (c *simulatedClock) Now() time.Time {
 }
 
 func (c *simulatedClock) simulatedTime(realTime time.Time) time.Time {
-	return c.epoch.Add(realTime.Sub(c.epoch) * time.Duration(c.speedup)).Add(-c.epochDiff)
+	return c.epoch.Add(realTime.Sub(c.realEpoch) * time.Duration(c.speedup))
 }
 
 func (c *simulatedClock) NewTimer(d time.Duration) *time.Timer {
