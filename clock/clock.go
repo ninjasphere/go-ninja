@@ -41,6 +41,8 @@ type simulatedClock struct {
 	speedup   int
 }
 
+const DEFAULT_EPOCH_DIFF = 86400 * 365 * 10
+
 // Answer a clock in which real time after the epoch time is sped up by the specified amount.
 func NewSimulatedClock(epoch time.Time, speedup int, epochDiff time.Duration) Clock {
 	return &simulatedClock{
