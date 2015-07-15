@@ -1,9 +1,5 @@
 package channels
 
-import (
-	"log"
-)
-
 type FanState struct {
 	Speed     *float64 `json:"speed,omitempty"`     // the speed of the fan as a percentage of maximum
 	Direction *string  `json:"direction,omitempty"` // the direction of the fan: "forward" or "reverse"
@@ -30,6 +26,6 @@ func (c *FanStatChannel) Set(fanState *FanState) error {
 }
 
 func (c *FanStatChannel) SendState(fanState *FanState) error {
-	log.Printf("SendState: %+v\n, %p", fanState, c.SendEvent)
+	//log.Printf("SendState: %+v\n, %p", fanState, c.SendEvent)
 	return c.SendEvent("state", fanState)
 }
