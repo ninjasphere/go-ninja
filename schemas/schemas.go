@@ -10,6 +10,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/gojsonschema"
 	"github.com/xeipuuv/gojsonreference"
 )
@@ -108,12 +109,6 @@ func flatten(input interface{}, lpath []string, flattened []flatItem) []flatItem
 	return flattened
 }
 
-type TimeSeriesDatapoint struct {
-	Path  string      `json:"path"`
-	Value interface{} `json:"value"`
-	Type  string      `json:"type"`
-}
-
 var timeSeriesPaths = make(map[string]string)
 
 /*
@@ -125,14 +120,14 @@ var timeSeriesPaths = make(map[string]string)
 * @param eventSchemaUri {string} The URI of the schema defining the event (usually ends with #/events/{name})
 * @returns {Array} An array of records that need to be saved to a time series db
  */
-func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) ([]TimeSeriesDatapoint, error) {
+func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) ([]model.TimeSeriesDatapoint, error) {
 
 	// We don't want a pointer, just grab the actual value
 	if reflect.ValueOf(value).Kind() == reflect.Ptr {
 		value = reflect.ValueOf(value).Elem().Interface()
 	}
 
-	var timeseriesData = make([]TimeSeriesDatapoint, 0)
+	var timeseriesData = make([]model.TimeSeriesDatapoint, 0)
 
 	//log.Debugf("Finding time series data for service: %s event: %s from payload: %v", serviceSchemaUri, event, value)
 
@@ -189,7 +184,7 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 
 		if ok && timeseriesType != "" {
 
-			dp := TimeSeriesDatapoint{
+			dp := model.TimeSeriesDatapoint{
 				Path: strings.Join(point.path, "."),
 				Type: timeseriesType,
 			}
