@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type TimeSeriesPayload struct {
 	Thing          string                `json:"thing"`
 	ThingType      string                `json:"thingType"`
@@ -22,4 +24,17 @@ type TimeSeriesDatapoint struct {
 	Path  string      `json:"path"`
 	Value interface{} `json:"value"`
 	Type  string      `json:"type"`
+}
+
+func (p *TimeSeriesPayload) GetTime() (time.Time, error) {
+	return time.Parse(time.RFC3339, p.Time)
+}
+
+func (p *TimeSeriesPayload) GetPath(path string) interface{} {
+	for _, point := range p.Points {
+		if point.Path == path {
+			return point.Value
+		}
+	}
+	return nil
 }
