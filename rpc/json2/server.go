@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/bus"
-	"github.com/ninjasphere/go-ninja/clock"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/rpc"
+	"github.com/ninjasphere/go-ninja/simtime"
 )
 
 var null = json.RawMessage([]byte("null"))
@@ -281,7 +281,7 @@ func (c *CodecRequest) writeServerResponse(client bus.Bus, res *serverResponse) 
 }
 
 func makeTimestamp() int64 {
-	return clock.GetClock().Now().UnixNano() / int64(time.Millisecond)
+	return simtime.Now().UnixNano() / int64(time.Millisecond)
 }
 
 type EmptyResponse struct {

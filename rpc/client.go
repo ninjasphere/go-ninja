@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/bus"
-	"github.com/ninjasphere/go-ninja/clock"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/simtime"
 )
 
 var log = logger.GetLogger("rpc")
@@ -170,7 +170,7 @@ func (client *Client) CallWithTimeout(topic string, serviceMethod string, args i
 	if err != nil {
 		return err
 	}
-	sentTime := clock.GetClock().Now()
+	sentTime := simtime.Now()
 
 	log.Debugf("id:%d -  Waiting for reply", call.ID)
 
