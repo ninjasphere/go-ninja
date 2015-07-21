@@ -2,10 +2,14 @@ package simtime
 
 import (
 	"container/heap"
+	"runtime/debug"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/go-ninja/logger"
 )
+
+var log = logger.GetLogger("simtime")
 
 var enabled = config.Bool(false, "simtime.enable")
 var startOffset = config.Duration(time.Hour*24*30, "simtime.offset")
@@ -36,6 +40,8 @@ func addQueuedEvents() {
 
 func init() {
 
+	log.Infof("Starting. Enabled %t", enabled)
+
 	if !enabled {
 		return
 	}
@@ -64,15 +70,17 @@ func init() {
 			}
 
 			if event.c != nil {
-				//spew.Dump("Sending event")
-				event.c <- currentTime
-				//spew.Dump("Waiting for tick")
+				select {
+				case event.c <- currentTime:
+				case <-time.After(time.Second * 20):
+					panic("An simtime channel listener didn't respond. (Check that you aren't calling simtime.Continue() more than once per tick.)")
+				}
+
 				select {
 				case <-tick:
 				case <-time.After(time.Second * 5):
-					panic("When using simtime, you MUST call simtime.Continue() when you are done with your time event")
+					panic("When using simtime, you MUST call simtime.Continue() when you are done with your time event with 5 seconds.")
 				}
-				//spew.Dump("Got tick")
 			} else {
 				event.f(currentTime)
 			}
@@ -88,6 +96,7 @@ func init() {
 }
 
 func Start() {
+	log.Infof("Starting. Time: %s", Now())
 	select {
 	case start <- true:
 	default:
@@ -96,11 +105,16 @@ func Start() {
 
 func Continue() {
 	if enabled {
-		tick <- true
+		select {
+		case tick <- true:
+		case <-time.After(time.Second * 5):
+			panic("Continue took more than 5 seconds. Check that you are only calling it once per channel tick.")
+		}
 	}
 }
 
 func SetCurrentTime(time time.Time) {
+	log.Infof("Setting time to %s", time)
 	currentTime = time
 	queue = eventQueue{}
 }
@@ -138,6 +152,7 @@ func addFuncEvent(f func(time.Time), d time.Duration, interval bool) {
 	e := &event{
 		fireAt: currentTime.Add(d).UnixNano(),
 		f:      f,
+		stack:  string(debug.Stack()),
 	}
 
 	if interval {
@@ -153,6 +168,7 @@ func addChannelEvent(d time.Duration, interval bool) chan time.Time {
 	e := &event{
 		fireAt: currentTime.Add(d).UnixNano(),
 		c:      make(chan time.Time),
+		stack:  string(debug.Stack()),
 	}
 
 	if interval {
@@ -178,6 +194,7 @@ type event struct {
 	c        chan time.Time
 	fireAt   int64
 	interval time.Duration
+	stack    string
 }
 
 // A eventQueue implements heap.Interface and holds Events.
