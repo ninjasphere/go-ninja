@@ -72,14 +72,14 @@ func init() {
 			if event.c != nil {
 				select {
 				case event.c <- currentTime:
-				case <-time.After(time.Second * 20):
+				case <-time.After(time.Minute * 5):
 					panic("An simtime channel listener didn't respond. (Check that you aren't calling simtime.Continue() more than once per tick.)")
 				}
 
 				select {
 				case <-tick:
-				case <-time.After(time.Second * 5):
-					panic("When using simtime, you MUST call simtime.Continue() when you are done with your time event with 5 seconds.")
+				case <-time.After(time.Minute * 5):
+					panic("When using simtime, you MUST call simtime.Continue() when you are done with your time event with 5 minutes.")
 				}
 			} else {
 				event.f(currentTime)
@@ -107,7 +107,7 @@ func Continue() {
 	if enabled {
 		select {
 		case tick <- true:
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Minute * 5):
 			panic("Continue took more than 5 seconds. Check that you are only calling it once per channel tick.")
 		}
 	}
