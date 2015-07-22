@@ -67,7 +67,7 @@ func init() {
 
 			if !allowFuture && currentTime.After(time.Now().Add(-offset)) {
 				//spew.Dump("Sleeping")
-				time.Sleep(currentTime.Sub(time.Now()))
+				time.Sleep(currentTime.Sub(time.Now().Add(-offset)))
 			}
 
 			if event.c != nil {
