@@ -12,7 +12,8 @@ import (
 var log = logger.GetLogger("simtime")
 
 var enabled = config.Bool(false, "simtime.enable")
-var startOffset = config.Duration(time.Hour*24*30, "simtime.offset")
+var startOffset = config.Duration(time.Hour*24*30, "simtime.startOffset")
+var offset = config.Duration(0, "simtime.offset")
 var allowFuture = config.Bool(false, "simtime.allowFuture")
 
 var currentTime = time.Now()
@@ -64,7 +65,7 @@ func init() {
 
 			currentTime = time.Unix(0, event.fireAt)
 
-			if !allowFuture && currentTime.After(time.Now()) {
+			if !allowFuture && currentTime.After(time.Now().Add(-offset)) {
 				//spew.Dump("Sleeping")
 				time.Sleep(currentTime.Sub(time.Now()))
 			}
