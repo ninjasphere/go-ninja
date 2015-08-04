@@ -100,12 +100,14 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 		}
 
 		var hasRedisConn = false
+		nonRedisConn := mtype.NumIn()
 		if (mtype.NumIn() == 2 || mtype.NumIn() == 3) && mtype.In(mtype.NumIn()-1).Implements(reflect.TypeOf((*redis.Conn)(nil)).Elem()) {
 			hasRedisConn = true
+			nonRedisConn--
 		}
 
 		// Method must have no or one arguments (plus optional redis connection)
-		if mtype.NumIn() > 2 && !hasRedisConn {
+		if nonRedisConn > 2 {
 			//log.Infof("Wrong number: %s", method.Name)
 			continue
 		}
@@ -118,7 +120,7 @@ func (m *serviceMap) register(rcvr interface{}, name string, exportableMethods [
 
 		// The one argument (args) must be a pointer and must be exported, if its there
 		var args reflect.Type
-		if mtype.NumIn() > 1 {
+		if nonRedisConn > 1 {
 			args = mtype.In(1)
 			if !isExportedOrBuiltin(args) {
 				log2.Fatalf("RPC Method %s.%s arguments must be exported", name, method.Name)
