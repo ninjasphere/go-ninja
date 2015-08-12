@@ -29,13 +29,22 @@ func init() {
 		useSyslog = false
 	}
 
-	if os.Getenv("DEBUG") != "" {
-		// if the magic debug variable exists...
-		level = loggo.DEBUG
+	debug := os.Getenv("DEBUG")
+	if debug != "" {
+		switch debug {
+		case "INFO":
+			level = loggo.INFO
+		case "WARNING":
+			level = loggo.WARNING
+		case "ERROR":
+			level = loggo.ERROR
+		default:
+			level = loggo.DEBUG
+		}
 	} else {
 		// set the default level
 		level = loggo.INFO
-		
+
 		// kill stderr
 		log.SetOutput(ioutil.Discard)
 
