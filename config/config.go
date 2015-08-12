@@ -286,8 +286,7 @@ func MustRefresh() {
 	flat["installDirectory"] = installDir
 
 	if _, err := os.Stat(installDir); err != nil {
-		log.Errorf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
-		panic(err)
+		log.Warningf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
 	}
 
 	dataPath := "/data"
