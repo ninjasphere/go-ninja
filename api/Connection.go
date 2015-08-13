@@ -173,7 +173,7 @@ func (c *Connection) GetServiceClientFromAnnouncement(announcement model.Service
 		client.SupportedEvents = *announcement.SupportedEvents
 	}
 
-	if announcement.SupportedEvents != nil {
+	if announcement.SupportedMethods != nil {
 		client.SupportedMethods = *announcement.SupportedMethods
 	}
 
