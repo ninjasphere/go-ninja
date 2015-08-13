@@ -4,10 +4,6 @@ type ThermoStatActuator interface {
 	SetTemperatureSetPoint(float64) error
 }
 
-type ThermoStatState struct {
-	Target *float64 `json:"target,omitempty"`
-}
-
 type ThermoStatChannel struct {
 	baseChannel
 	actuator ThermoStatActuator
@@ -20,14 +16,10 @@ func NewThermoStatChannel(actuator ThermoStatActuator) *ThermoStatChannel {
 	}
 }
 
-func (c *ThermoStatChannel) Set(state *ThermoStatState) error {
-	if state != nil && state.Target != nil {
-		return c.actuator.SetTemperatureSetPoint(*state.Target)
-	} else {
-		return nil
-	}
+func (c *ThermoStatChannel) Set(state float64) error {
+	return c.actuator.SetTemperatureSetPoint(state)
 }
 
-func (c *ThermoStatChannel) SendState(state *ThermoStatState) error {
+func (c *ThermoStatChannel) SendState(state float64) error {
 	return c.SendEvent("state", state)
 }
