@@ -293,6 +293,10 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 	return nil
 }
 
+func (c *Connection) ExportChannelWithModel(service interface{}, deviceTopic string, model *model.Channel) (*rpc.ExportedService, error) {
+	return c.exportService(service, fmt.Sprintf("%s/channel/%s", deviceTopic, model.ID), model)
+}
+
 type simpleService struct {
 	model.ServiceAnnouncement
 }
