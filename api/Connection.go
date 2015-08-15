@@ -290,29 +290,6 @@ func (c *Connection) ExportChannelWithSupported(device Device, channel Channel, 
 		return err
 	}
 
-	// <TEMPORARY> - Expose channels using the old topic (with the protocol)
-	/*properAnnouncement := announcement.ServiceAnnouncement
-
-	shortProtocol := strings.TrimPrefix(c.resolveProtocolURI(channel.GetProtocol()), protocolSchemaURL.String())
-	oldTopic := fmt.Sprintf("$device/%s/channel/%s/%s", device.GetDeviceInfo().ID, id, shortProtocol)
-
-	deprecated := true
-	announcement.ServiceAnnouncement = model.ServiceAnnouncement{
-		Schema:           c.resolveProtocolURI(channel.GetProtocol()),
-		SupportedMethods: supportedMethods,
-		SupportedEvents:  supportedEvents,
-		Deprecated:       &deprecated,
-	}
-
-	_, err = c.exportService(channel, oldTopic, announcement)
-
-	announcement.ServiceAnnouncement = properAnnouncement
-
-	if err != nil {
-		return err
-	}
-	// </TEMPORARY>*/
-
 	return nil
 }
 
