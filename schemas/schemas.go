@@ -190,7 +190,7 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 			}
 
 			switch timeseriesType {
-			case "value" | "boolean":
+			case "value", "boolean", "tag":
 				dp.Value = point.value
 			}
 
