@@ -1,8 +1,13 @@
 package cloud
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ninjasphere/go-ninja/config"
+	"io/ioutil"
+	"net/http"
 )
 
 var (
@@ -28,22 +33,144 @@ type Cloud interface {
 }
 
 type cloud struct {
+	idPrefix  string
+	apiPrefix string
+	clientId  string
 }
 
-var cloudInstance cloud
+var cloudInstance = cloud{
+	idPrefix:  config.String("https://id.sphere.ninja", "cloud.id"),
+	apiPrefix: config.String("https://api.sphere.ninja", "cloud.api"),
+	clientId:  config.String("0u2jota2o1dlou72hot4", "cloud.client_id"),
+}
 
 func CloudAPI() Cloud {
 	return &cloudInstance
 }
 
 func (c *cloud) RegisterUser(name string, email string, password string) error {
-	return fmt.Errorf("not implemented: RegisterUser")
+
+	data := map[string]interface{}{
+		"name":     name,
+		"email":    email,
+		"password": password,
+	}
+
+	if buffer, err := json.Marshal(data); err != nil {
+		return err
+	} else {
+
+		if req, err := http.NewRequest("POST", c.idPrefix+"/auth/register", bytes.NewBuffer(buffer)); err != nil {
+			return err
+		} else {
+			req.Header["Content-Type"] = []string{"application/json"}
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err == nil {
+				data = map[string]interface{}{}
+				var copy []byte
+				if copy, err = ioutil.ReadAll(resp.Body); err != nil {
+					return err
+				}
+				if err := json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data); err == nil {
+					if ok, present := data["ok"].(bool); present {
+						if !ok {
+							return fmt.Errorf("failed - %v", data["why"])
+						} else {
+							return nil
+						}
+					} else {
+						return fmt.Errorf("empty response")
+					}
+				} else {
+					return err
+				}
+			}
+			return err
+		}
+	}
 }
 
 func (c *cloud) AuthenticateUser(email string, password string) (string, error) {
-	return "", fmt.Errorf("not implemented: AuthenticateUser")
+
+	data := map[string]string{
+		"grant_type": "password",
+		"username":   email,
+		"password":   password,
+		"client_id":  c.clientId,
+	}
+
+	if buffer, err := json.Marshal(data); err != nil {
+		return "", err
+	} else {
+
+		if req, err := http.NewRequest("POST", c.idPrefix+"/oauth/token", bytes.NewBuffer(buffer)); err != nil {
+			return "", err
+		} else {
+			req.Header["Content-Type"] = []string{"application/json"}
+
+			client := &http.Client{}
+			if resp, err := client.Do(req); err != nil {
+				return "", err
+			} else {
+				data = map[string]string{}
+				var copy []byte
+				if copy, err = ioutil.ReadAll(resp.Body); err != nil {
+					return "", err
+				}
+				if err := json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data); err == nil {
+					if token, ok := data["access_token"]; !ok {
+						e := data["error"]
+						d := data["error_description"]
+						return "", fmt.Errorf("%s(\"%s\")", e, d)
+					} else {
+
+						return token, nil
+					}
+				} else {
+					return "", err
+				}
+			}
+		}
+	}
 }
 
 func (c *cloud) ActivateSphere(accessToken string, nodeId string) error {
-	return fmt.Errorf("not implemented: ActivateSphere")
+	data := map[string]interface{}{
+		"nodeId": nodeId,
+	}
+
+	if buffer, err := json.Marshal(data); err != nil {
+		return err
+	} else {
+
+		if req, err := http.NewRequest("POST", c.apiPrefix+"/rest/v1/node", bytes.NewBuffer(buffer)); err != nil {
+			return err
+		} else {
+			req.Header["Content-Type"] = []string{"application/json"}
+			req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
+
+			client := &http.Client{}
+			if resp, err := client.Do(req); err != nil {
+				return err
+			} else {
+				data := map[string]interface{}{}
+				err = json.NewDecoder(resp.Body).Decode(&data)
+				if err != nil {
+					return err
+				}
+
+				if e, ok := data["type"].(string); ok && e == "error" {
+					if data, ok := data["data"].(map[string]interface{}); ok {
+						return fmt.Errorf("%s", data["message"])
+					} else {
+						return fmt.Errorf("failed unknown message: %+v", data)
+					}
+				}
+
+				return nil
+			}
+		}
+	}
 }
