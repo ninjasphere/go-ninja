@@ -13,10 +13,11 @@ type ConfigurationScreen struct {
 }
 
 type Section struct {
-	Title    string
-	Subtitle string
-	Contents []Typed
-	Well     bool
+	Title       string
+	Subtitle    string
+	DisplayIcon string
+	Contents    []Typed
+	Well        bool
 }
 
 type InputText struct {
@@ -94,6 +95,7 @@ type RadioGroup struct {
 	Name     string
 	Value    string
 	Options  []RadioGroupOption
+	Vertical bool
 }
 
 func (o RadioGroup) getType() string {
