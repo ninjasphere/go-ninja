@@ -72,23 +72,18 @@ func (c *cloud) RegisterUser(name string, email string, password string) error {
 
 			resp, err := getClient().Do(req)
 			if err == nil {
-				data = map[string]interface{}{}
-				var copy []byte
-				if copy, err = ioutil.ReadAll(resp.Body); err != nil {
+				data, err := decodeData(resp)
+				if err != nil {
 					return err
 				}
-				if err := json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data); err == nil {
-					if ok, present := data["ok"].(bool); present {
-						if !ok {
-							return fmt.Errorf("failed - %v", data["why"])
-						} else {
-							return nil
-						}
+				if ok, present := data["ok"].(bool); present {
+					if !ok {
+						return fmt.Errorf("failed - %v", data["why"])
 					} else {
-						return fmt.Errorf("empty response")
+						return nil
 					}
 				} else {
-					return err
+					return fmt.Errorf("empty response")
 				}
 			}
 			return err
@@ -117,22 +112,16 @@ func (c *cloud) AuthenticateUser(email string, password string) (string, error) 
 			if resp, err := getClient().Do(req); err != nil {
 				return "", err
 			} else {
-				data = map[string]string{}
-				var copy []byte
-				if copy, err = ioutil.ReadAll(resp.Body); err != nil {
+				data, err := decodeData(resp)
+				if err != nil {
 					return "", err
 				}
-				if err := json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data); err == nil {
-					if token, ok := data["access_token"]; !ok {
-						e := data["error"]
-						d := data["error_description"]
-						return "", fmt.Errorf("%s(\"%s\")", e, d)
-					} else {
-
-						return token, nil
-					}
+				if token, ok := data["access_token"].(string); !ok {
+					e := data["error"]
+					d := data["error_description"]
+					return "", fmt.Errorf("%s(\"%s\")", e, d)
 				} else {
-					return "", err
+					return token, nil
 				}
 			}
 		}
@@ -157,12 +146,10 @@ func (c *cloud) ActivateSphere(accessToken string, nodeId string) error {
 			if resp, err := getClient().Do(req); err != nil {
 				return err
 			} else {
-				data := map[string]interface{}{}
-				err = json.NewDecoder(resp.Body).Decode(&data)
+				data, err := decodeData(resp)
 				if err != nil {
 					return err
 				}
-
 				if e, ok := data["type"].(string); ok && e == "error" {
 					if data, ok := data["data"].(map[string]interface{}); ok {
 						return fmt.Errorf("%s", data["message"])
@@ -188,4 +175,18 @@ func getClient() *http.Client {
 	}
 
 	return client
+}
+
+func decodeData(resp *http.Response) (map[string]interface{}, error) {
+	data := map[string]interface{}{}
+	copy, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return data, err
+	}
+	err = json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data)
+	if err != nil {
+		return data, fmt.Errorf("failed to decode response: %s", string(copy))
+	} else {
+		return data, nil
+	}
 }
