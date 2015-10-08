@@ -5,11 +5,12 @@ import (
 )
 
 type ConfigurationScreen struct {
-	Title       string
-	Subtitle    string
-	DisplayIcon string
-	Sections    []Section
-	Actions     []Typed
+	Title        string
+	Subtitle     string
+	DisplayIcon  string
+	Sections     []Section
+	Actions      []Typed
+	AddToHistory bool
 }
 
 type Section struct {
