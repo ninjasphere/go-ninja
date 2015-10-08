@@ -2,13 +2,18 @@ package cloud
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninjasphere/go-ninja/config"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/go-ninja/logger"
 )
+
+var log = logger.GetLogger("cloud")
 
 var (
 	AlreadyRegistered = errors.New("userid is already registered")
@@ -65,8 +70,7 @@ func (c *cloud) RegisterUser(name string, email string, password string) error {
 		} else {
 			req.Header["Content-Type"] = []string{"application/json"}
 
-			client := &http.Client{}
-			resp, err := client.Do(req)
+			resp, err := getClient().Do(req)
 			if err == nil {
 				data = map[string]interface{}{}
 				var copy []byte
@@ -110,8 +114,7 @@ func (c *cloud) AuthenticateUser(email string, password string) (string, error) 
 		} else {
 			req.Header["Content-Type"] = []string{"application/json"}
 
-			client := &http.Client{}
-			if resp, err := client.Do(req); err != nil {
+			if resp, err := getClient().Do(req); err != nil {
 				return "", err
 			} else {
 				data = map[string]string{}
@@ -151,8 +154,7 @@ func (c *cloud) ActivateSphere(accessToken string, nodeId string) error {
 			req.Header["Content-Type"] = []string{"application/json"}
 			req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
 
-			client := &http.Client{}
-			if resp, err := client.Do(req); err != nil {
+			if resp, err := getClient().Do(req); err != nil {
 				return err
 			} else {
 				data := map[string]interface{}{}
@@ -173,4 +175,17 @@ func (c *cloud) ActivateSphere(accessToken string, nodeId string) error {
 			}
 		}
 	}
+}
+
+func getClient() *http.Client {
+	client := &http.Client{}
+
+	if config.Bool(false, "cloud", "allowSelfSigned") {
+		log.Warningf("Allowing self-signed cerificate (should only be used to connect to development cloud)")
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
+	return client
 }
