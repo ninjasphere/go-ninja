@@ -35,6 +35,18 @@ type Cloud interface {
 	 * Activates the specified sphere.
 	 */
 	ActivateSphere(accessToken string, nodeId string) error
+
+	/**
+	 * Set the specified tag for the specified site. If replace is true, then
+	 * the current value is updated without archiving, otherwise the current
+	 * value is archived and the specified value becomes the current value.
+	 */
+	SetTag(accessToken string, siteId string, tag string, body interface{}, replace bool) error
+
+	/**
+	 * Unmarshals the value of the specifed tag for the specified site onto the specified body object.
+	 */
+	GetTag(accessToken string, siteId string, tag string, body interface{}) error
 }
 
 type cloud struct {
@@ -72,7 +84,8 @@ func (c *cloud) RegisterUser(name string, email string, password string) error {
 
 			resp, err := getClient().Do(req)
 			if err == nil {
-				data, err := decodeData(resp)
+				data := map[string]interface{}{}
+				err := decodeData(resp, data)
 				if err != nil {
 					return err
 				}
@@ -112,7 +125,8 @@ func (c *cloud) AuthenticateUser(email string, password string) (string, error) 
 			if resp, err := getClient().Do(req); err != nil {
 				return "", err
 			} else {
-				data, err := decodeData(resp)
+				data := map[string]interface{}{}
+				err := decodeData(resp, &data)
 				if err != nil {
 					return "", err
 				}
@@ -146,7 +160,8 @@ func (c *cloud) ActivateSphere(accessToken string, nodeId string) error {
 			if resp, err := getClient().Do(req); err != nil {
 				return err
 			} else {
-				data, err := decodeData(resp)
+				data := map[string]interface{}{}
+				err := decodeData(resp, &data)
 				if err != nil {
 					return err
 				}
@@ -177,16 +192,99 @@ func getClient() *http.Client {
 	return client
 }
 
-func decodeData(resp *http.Response) (map[string]interface{}, error) {
-	data := map[string]interface{}{}
+type Json2Response struct {
+	Type string          `json:"type,omitempty"`
+	Data json.RawMessage `json:"data,omitempty"`
+}
+
+type Json2Error struct {
+	Message string `json:"message,omitempty"`
+}
+
+func (c *cloud) tagurl(siteId string, tag string) string {
+	return fmt.Sprintf("%s/rest/v1/sites/%s/tags/%s", c.apiPrefix, siteId, tag)
+}
+
+func (c *cloud) GetTag(accessToken string, siteId string, tag string, body interface{}) error {
+	if req, err := http.NewRequest("GET", c.tagurl(siteId, tag), nil); err != nil {
+		return err
+	} else {
+		req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
+
+		client := &http.Client{}
+		if resp, err := client.Do(req); err != nil {
+			return err
+		} else {
+			j2r := &Json2Response{}
+			err := decodeData(resp, j2r)
+			if err != nil {
+				return err
+			}
+			if j2r.Type == "error" {
+				j2e := Json2Error{}
+				err := json.Unmarshal(j2r.Data, j2e)
+				if err == nil {
+					return fmt.Errorf("%s", j2e.Message)
+				} else {
+					return fmt.Errorf("%s", string(j2e.Message))
+				}
+			} else if j2r.Type == "object" {
+				return json.Unmarshal(j2r.Data, body)
+			} else {
+				return fmt.Errorf("unexpected payload - %v", j2r)
+			}
+		}
+	}
+}
+
+func (c *cloud) SetTag(accessToken string, siteId string, tag string, body interface{}, replace bool) error {
+	if buffer, err := json.Marshal(body); err != nil {
+		return err
+	} else {
+		method := "POST"
+		if replace {
+			method = "PUT"
+		}
+		if req, err := http.NewRequest(method, c.tagurl(siteId, tag), bytes.NewBuffer(buffer)); err != nil {
+			return err
+		} else {
+			req.Header["Content-Type"] = []string{"application/json"}
+			req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
+
+			client := &http.Client{}
+			if resp, err := client.Do(req); err != nil {
+				return err
+			} else {
+				j2r := &Json2Response{}
+				err := decodeData(resp, j2r)
+				if err != nil {
+					return err
+				}
+				if j2r.Type == "error" {
+					j2e := &Json2Error{}
+					err := json.Unmarshal(j2r.Data, j2e)
+					if err == nil {
+						return fmt.Errorf("%s", j2e.Message)
+					} else {
+						return fmt.Errorf("%s", string(j2e.Message))
+					}
+				}
+				return nil
+			}
+		}
+
+	}
+}
+
+func decodeData(resp *http.Response, data interface{}) error {
 	copy, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return data, err
+		return err
 	}
-	err = json.NewDecoder(bytes.NewBuffer(copy)).Decode(&data)
+	err = json.NewDecoder(bytes.NewBuffer(copy)).Decode(data)
 	if err != nil {
-		return data, fmt.Errorf("failed to decode response: %s", string(copy))
+		return fmt.Errorf("failed to decode response: %s: '%s'", err, string(copy))
 	} else {
-		return data, nil
+		return nil
 	}
 }
