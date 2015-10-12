@@ -211,8 +211,7 @@ func (c *cloud) GetTag(accessToken string, siteId string, tag string, body inter
 	} else {
 		req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
 
-		client := &http.Client{}
-		if resp, err := client.Do(req); err != nil {
+		if resp, err := getClient().Do(req); err != nil {
 			return err
 		} else {
 			j2r := &Json2Response{}
@@ -251,8 +250,7 @@ func (c *cloud) SetTag(accessToken string, siteId string, tag string, body inter
 			req.Header["Content-Type"] = []string{"application/json"}
 			req.Header["Authorization"] = []string{fmt.Sprintf("Bearer %s", accessToken)}
 
-			client := &http.Client{}
-			if resp, err := client.Do(req); err != nil {
+			if resp, err := getClient().Do(req); err != nil {
 				return err
 			} else {
 				j2r := &Json2Response{}
