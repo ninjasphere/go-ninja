@@ -16,7 +16,8 @@ import (
 var log = logger.GetLogger("cloud")
 
 var (
-	AlreadyRegistered = errors.New("userid is already registered")
+	AlreadyRegistered = errors.New("The userid is already registered")
+	TagNotFound       = errors.New("The specified tag was not found.")
 )
 
 type Cloud interface {
@@ -198,6 +199,7 @@ type Json2Response struct {
 }
 
 type Json2Error struct {
+	Code    int    `json:"code"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -220,12 +222,16 @@ func (c *cloud) GetTag(accessToken string, siteId string, tag string, body inter
 				return err
 			}
 			if j2r.Type == "error" {
-				j2e := Json2Error{}
+				j2e := &Json2Error{}
 				err := json.Unmarshal(j2r.Data, j2e)
 				if err == nil {
-					return fmt.Errorf("%s", j2e.Message)
+					if j2e.Code == 404 {
+						return TagNotFound
+					} else {
+						return fmt.Errorf("%d - %s", j2e.Code, j2e.Message)
+					}
 				} else {
-					return fmt.Errorf("%s", string(j2e.Message))
+					return fmt.Errorf("%s", string(j2r.Data))
 				}
 			} else if j2r.Type == "object" {
 				return json.Unmarshal(j2r.Data, body)
@@ -264,7 +270,7 @@ func (c *cloud) SetTag(accessToken string, siteId string, tag string, body inter
 					if err == nil {
 						return fmt.Errorf("%s", j2e.Message)
 					} else {
-						return fmt.Errorf("%s", string(j2e.Message))
+						return fmt.Errorf("%s", string(j2r.Data))
 					}
 				}
 				return nil
