@@ -13,24 +13,55 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/go-fsnotify/fsnotify"
+
 	"github.com/juju/loggo"
 	"gopkg.in/alecthomas/kingpin.v1"
 )
 
 var (
-	config map[string]interface{}
-	log    = loggo.GetLogger("config") // avoid the wrapper as it uses this module and will cause a loop
+	config   map[string]interface{}
+	log      = loggo.GetLogger("config") // avoid the wrapper as it uses this module and will cause a loop
+	dataPath = "/data"
+	lock     = &sync.WaitGroup{}
 )
 
 func init() {
+	// in snappy, we default to using the snappy data path
+	snappDataPath := os.Getenv("SNAPP_APP_DATA_PATH")
+	if snappDataPath != "" {
+		dataPath = snappDataPath
+	}
+
 	MustRefresh()
 
 	if Bool(false, "dumpConfig") {
 		spew.Dump(GetAll(false))
 	}
+
+	go func() {
+
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			panic("Failed to create watcher: " + err.Error())
+		}
+		watcher.Add(dataPath + "/etc/opt/ninja")
+
+		for {
+			select {
+			case ev := <-watcher.Events:
+				log.Infof("Config updated: %s", ev.Name)
+				MustRefresh()
+			case err := <-watcher.Errors:
+				log.Warningf("Config Watcher error: %s", err)
+			}
+		}
+
+	}()
 }
 
 func GetAll(flatten bool) map[string]interface{} {
@@ -211,6 +242,8 @@ func MustBool(path ...string) bool {
 var hey = "what's up buddy?"
 
 func HasString(path ...string) bool {
+	lock.Wait()
+
 	val, ok := config[strings.Join(path, ".")]
 	if !ok {
 		return false
@@ -221,6 +254,8 @@ func HasString(path ...string) bool {
 }
 
 func mustGet(path ...string) interface{} {
+	lock.Wait()
+
 	val, ok := config[strings.Join(path, ".")]
 	if !ok {
 		log.Errorf("expected value for %v but found nothing", path)
@@ -230,6 +265,8 @@ func mustGet(path ...string) interface{} {
 }
 
 func get(path ...string) interface{} {
+	lock.Wait()
+
 	val, ok := config[strings.Join(path, ".")]
 	if !ok {
 		return nil
@@ -238,6 +275,9 @@ func get(path ...string) interface{} {
 }
 
 func MustRefresh() {
+	lock.Wait()
+	lock.Add(1)
+	defer lock.Done()
 
 	flat := make(map[string]interface{})
 
@@ -289,25 +329,24 @@ func MustRefresh() {
 		log.Warningf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
 	}
 
-	dataPath := "/data"
-
-	// in snappy, we default to using the snappy data path
-	snappDataPath := os.Getenv("SNAPP_APP_DATA_PATH")
-	if snappDataPath != "" {
-		dataPath = snappDataPath
-	}
-
 	// User overrides (json)
 	addFile(dataPath+"/config.json", flat)
 
-	// Add site preference overrides
+	/*// Add site preference overrides
 	addFile(dataPath+"/etc/opt/ninja/site-preferences.json", flat)
 
 	// credentials file
 	addFile(dataPath+"/etc/opt/ninja/credentials.json", flat)
 
 	// mesh file
-	addFile(dataPath+"/etc/opt/ninja/mesh.json", flat)
+	addFile(dataPath+"/etc/opt/ninja/mesh.json", flat)*/
+
+	files, _ := ioutil.ReadDir(dataPath + "/etc/opt/ninja")
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".json") {
+			addFile(dataPath+"/etc/opt/ninja/"+f.Name(), flat)
+		}
+	}
 
 	// home directory environment(s) config
 	for i := len(environments) - 1; i >= 0; i-- {
@@ -325,19 +364,22 @@ func MustRefresh() {
 	}
 
 	// common credentials config
-	addFile(filepath.Join(installDir, "config", "credentials.json"), flat)
+	//	addFile(filepath.Join(installDir, "config", "credentials.json"), flat)
 
 	//log.Debugf("Loaded config: %v", flat)
 
 	config = flat
 
-	if NoCloud() {
-		config["userId"] = "nouser"
-		config["token"] = "notoken"
-		config["sphereNetworkKey"] = "nonetworkkey"
-		config["siteId"] = "nomesh" + Serial()
-		config["masterNodeId"] = Serial()
+	if nc, ok := config["noCloud"]; ok {
+		if nc.(bool) {
+			config["userId"] = "nouser"
+			config["token"] = "notoken"
+			config["sphereNetworkKey"] = "nonetworkkey"
+			config["siteId"] = "nomesh" + Serial()
+			config["masterNodeId"] = Serial()
+		}
 	}
+
 }
 
 func addEnv(config map[string]interface{}) {
