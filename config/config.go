@@ -390,7 +390,7 @@ func addEnv(config map[string]interface{}) {
 
 		if strings.HasPrefix(name, "sphere_") {
 			name = strings.TrimPrefix(name, "sphere_")
-			name = strings.Replace(name, "_", ".", 0)
+			name = strings.Replace(name, "_", ".", -1)
 
 			if _, ok := config[name]; !ok {
 				config[name] = value
