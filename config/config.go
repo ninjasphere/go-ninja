@@ -383,17 +383,21 @@ func MustRefresh() {
 }
 
 func addEnv(config map[string]interface{}) {
+	prefix := "sphere_"
 	for _, v := range os.Environ() {
-		split := strings.Split(v, "=")
 
-		name, value := split[0], split[1]
+		re := regexp.MustCompile("([^=]*)=(.*)")
+		split := re.FindStringSubmatch(v)
+		if split != nil {
+			name, value := split[1], split[2]
 
-		if strings.HasPrefix(name, "sphere_") {
-			name = strings.TrimPrefix(name, "sphere_")
-			name = strings.Replace(name, "_", ".", -1)
+			if strings.HasPrefix(name, prefix) {
+				name = strings.TrimPrefix(name, prefix)
+				name = strings.Replace(name, "_", ".", -1)
 
-			if _, ok := config[name]; !ok {
-				config[name] = value
+				if _, ok := config[name]; !ok {
+					config[name] = value
+				}
 			}
 		}
 	}
