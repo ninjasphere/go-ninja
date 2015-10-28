@@ -286,7 +286,7 @@ func MustRefresh() {
 	addArgs(flat)
 
 	// load environments (no value args) from cli args
-	environments := []string{"default"}
+	environments := []string{}
 	for name, value := range flat {
 		if value == nil {
 			environments = append(environments, name)
@@ -299,14 +299,23 @@ func MustRefresh() {
 		}
 	}
 
-	log.Infof("Environments: %s", strings.Join(environments, ", "))
+	// env vars (if starting with "sphere_")
+	addEnv(flat)
+
+	// If there aren't any environments set via cli, see if any were set in env var
+	if len(environments) == 0 {
+		if v, ok := flat["env"]; ok {
+			environments = append(environments, strings.Split(v.(string), ",")...)
+		}
+	}
+
+	environments = append(environments, "default")
 
 	flat["env"] = environments
 
-	userHome := getUserHome()
+	spew.Dump("Environments: %s", strings.Join(environments, ", "))
 
-	// env vars (if starting with "sphere_")
-	addEnv(flat)
+	userHome := getUserHome()
 
 	// anything that can be parsed as a number, is a number
 	parseNumbers(flat)
@@ -333,15 +342,6 @@ func MustRefresh() {
 	// User overrides (json)
 	addFile(dataPath+"/config.json", flat)
 
-	/*// Add site preference overrides
-	addFile(dataPath+"/etc/opt/ninja/site-preferences.json", flat)
-
-	// credentials file
-	addFile(dataPath+"/etc/opt/ninja/credentials.json", flat)
-
-	// mesh file
-	addFile(dataPath+"/etc/opt/ninja/mesh.json", flat)*/
-
 	files, _ := ioutil.ReadDir(dataPath + "/etc/opt/ninja")
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".json") {
@@ -363,9 +363,6 @@ func MustRefresh() {
 	for i := len(environments) - 1; i >= 0; i-- {
 		addFile(filepath.Join(installDir, "config", environments[i]+".json"), flat)
 	}
-
-	// common credentials config
-	//	addFile(filepath.Join(installDir, "config", "credentials.json"), flat)
 
 	//log.Debugf("Loaded config: %v", flat)
 
