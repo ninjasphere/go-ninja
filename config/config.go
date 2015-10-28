@@ -313,7 +313,7 @@ func MustRefresh() {
 
 	flat["env"] = environments
 
-	spew.Dump("Environments: %s", strings.Join(environments, ", "))
+	log.Infof("Environments: %s", strings.Join(environments, ", "))
 
 	userHome := getUserHome()
 
