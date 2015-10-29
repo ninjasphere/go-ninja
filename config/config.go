@@ -285,8 +285,18 @@ func MustRefresh() {
 	// cli overrides
 	addArgs(flat)
 
-	// load environments (no value args) from cli args
-	environments := []string{}
+	// env vars (if starting with "sphere_")
+	addEnv(flat)
+
+	// initialise the list
+	environments := []string{"default"}
+
+	// add environments read from the env variable
+	if v, ok := flat["env"]; ok {
+		environments = append(environments, strings.Split(v.(string), ",")...)
+	}
+
+	// then add any found in cli arguments
 	for name, value := range flat {
 		if value == nil {
 			environments = append(environments, name)
@@ -298,18 +308,6 @@ func MustRefresh() {
 			}
 		}
 	}
-
-	// env vars (if starting with "sphere_")
-	addEnv(flat)
-
-	// If there aren't any environments set via cli, see if any were set in env var
-	if len(environments) == 0 {
-		if v, ok := flat["env"]; ok {
-			environments = append(environments, strings.Split(v.(string), ",")...)
-		}
-	}
-
-	environments = append(environments, "default")
 
 	flat["env"] = environments
 
