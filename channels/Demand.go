@@ -8,7 +8,9 @@ type DemandState struct {
 	Goal         *float64 `json:"goal,omitempty"`         // goal power for averaging period
 	Controlled   *float64 `json:"controlled,omitempty"`   // average controlled power
 	Uncontrolled *float64 `json:"uncontrolled,omitempty"` // average uncontrolled power
-	Period       *int     `json:"period,omitempty"`       // averaging period, in secon
+	Period       *int     `json:"period,omitempty"`       // averaging period, in seconds
+	OnTicks      *int     `json:"onTicks,omitempty"`      // the number of seconds since last switch on
+	OffTicks     *int     `json:"offTicks,omitempty"`     // the number of seconds since last switch off
 }
 
 type DemandChannel struct {
