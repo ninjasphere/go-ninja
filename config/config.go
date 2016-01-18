@@ -392,7 +392,13 @@ func addEnv(config map[string]interface{}) {
 				name = strings.Replace(name, "_", ".", -1)
 
 				if _, ok := config[name]; !ok {
-					config[name] = value
+					if value == "true" {
+						config[name] = true
+					} else if value == "false" {
+						config[name] = false
+					} else {
+						config[name] = value
+					}
 				}
 			}
 		}
