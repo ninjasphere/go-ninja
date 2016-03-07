@@ -22,8 +22,8 @@ func init() {
 	var level loggo.Level
 	useSyslog := true
 
-	if log, logErr := os.Stat("/dev/log"); logErr != nil {
-		useSysLog = false
+	if _, logErr := os.Stat("/dev/log"); logErr != nil {
+		useSyslog = false
 	}
 
 	// snappy doesn't support syslog, so when we detect a snappy app we will disable syslog
