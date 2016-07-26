@@ -278,93 +278,97 @@ func get(path ...string) interface{} {
 func MustRefresh() {
 	lock.Wait()
 	lock.Add(1)
-	defer lock.Done()
 
-	flat := make(map[string]interface{})
+	func() {
+		defer lock.Done()
 
-	// cli overrides
-	addArgs(flat)
+		flat := make(map[string]interface{})
 
-	// env vars (if starting with "sphere_")
-	addEnv(flat)
+		// cli overrides
+		addArgs(flat)
 
-	// initialise the list
-	environments := []string{"default"}
+		// env vars (if starting with "sphere_")
+		addEnv(flat)
 
-	// add environments read from the env variable
-	if v, ok := flat["env"]; ok {
-		environments = append(environments, strings.Split(v.(string), ",")...)
-	}
+		// initialise the list
+		environments := []string{"default"}
 
-	// then add any found in cli arguments
-	for name, value := range flat {
-		if value == nil {
-			environments = append(environments, name)
-		} else {
-			if ok, boolValue := value.(bool); ok {
-				if boolValue {
-					environments = append(environments, name)
+		// add environments read from the env variable
+		if v, ok := flat["env"]; ok {
+			environments = append(environments, strings.Split(v.(string), ",")...)
+		}
+
+		// then add any found in cli arguments
+		for name, value := range flat {
+			if value == nil {
+				environments = append(environments, name)
+			} else {
+				if ok, boolValue := value.(bool); ok {
+					if boolValue {
+						environments = append(environments, name)
+					}
 				}
 			}
 		}
-	}
 
-	flat["env"] = environments
+		flat["env"] = environments
 
-	log.Infof("Environments: %s", strings.Join(environments, ", "))
+		log.Infof("Environments: %s", strings.Join(environments, ", "))
 
-	userHome := getUserHome()
+		userHome := getUserHome()
 
-	// anything that can be parsed as a number, is a number
-	parseNumbers(flat)
+		// anything that can be parsed as a number, is a number
+		parseNumbers(flat)
 
-	installDir := "/opt/ninjablocks"
-	if val, ok := flat["installDirectory"]; ok {
-		installDir = val.(string)
-	}
-
-	if _, err := os.Stat(installDir); err != nil {
-		// check for installation in snappy, apply different default path
-		snappAppPath := os.Getenv("SNAPP_APP_PATH")
-		if snappAppPath != "" {
-			installDir = snappAppPath
+		installDir := "/opt/ninjablocks"
+		if val, ok := flat["installDirectory"]; ok {
+			installDir = val.(string)
 		}
-	}
 
-	flat["installDirectory"] = installDir
-
-	if _, err := os.Stat(installDir); err != nil {
-		log.Warningf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
-	}
-
-	// User overrides (json)
-	addFile(dataPath+"/config.json", flat)
-
-	files, _ := ioutil.ReadDir(dataPath + "/etc/opt/ninja")
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".json") {
-			addFile(dataPath+"/etc/opt/ninja/"+f.Name(), flat)
+		if _, err := os.Stat(installDir); err != nil {
+			// check for installation in snappy, apply different default path
+			snappAppPath := os.Getenv("SNAPP_APP_PATH")
+			if snappAppPath != "" {
+				installDir = snappAppPath
+			}
 		}
-	}
 
-	// home directory environment(s) config
-	for i := len(environments) - 1; i >= 0; i-- {
-		addFile(filepath.Join(userHome, ".sphere", environments[i]+".json"), flat)
-	}
+		flat["installDirectory"] = installDir
 
-	// current directory environment(s) config
-	for i := len(environments) - 1; i >= 0; i-- {
-		addFile(filepath.Join(".", "config", environments[i]+".json"), flat)
-	}
+		if _, err := os.Stat(installDir); err != nil {
+			log.Warningf("Couldn't load sphere install directory. Override with env var sphere_installDirectory. error:%s", err)
+		}
 
-	// common environment(s) config
-	for i := len(environments) - 1; i >= 0; i-- {
-		addFile(filepath.Join(installDir, "config", environments[i]+".json"), flat)
-	}
+		// User overrides (json)
+		addFile(dataPath+"/config.json", flat)
 
-	//log.Debugf("Loaded config: %v", flat)
+		files, _ := ioutil.ReadDir(dataPath + "/etc/opt/ninja")
+		for _, f := range files {
+			if strings.HasSuffix(f.Name(), ".json") {
+				addFile(dataPath+"/etc/opt/ninja/"+f.Name(), flat)
+			}
+		}
 
-	config = flat
+		// home directory environment(s) config
+		for i := len(environments) - 1; i >= 0; i-- {
+			addFile(filepath.Join(userHome, ".sphere", environments[i]+".json"), flat)
+		}
+
+		// current directory environment(s) config
+		for i := len(environments) - 1; i >= 0; i-- {
+			addFile(filepath.Join(".", "config", environments[i]+".json"), flat)
+		}
+
+		// common environment(s) config
+		for i := len(environments) - 1; i >= 0; i-- {
+			addFile(filepath.Join(installDir, "config", environments[i]+".json"), flat)
+		}
+
+		//log.Debugf("Loaded config: %v", flat)
+
+		config = flat
+
+	}()
 
 	if nc, ok := config["noCloud"]; ok {
 		if nc.(bool) {
