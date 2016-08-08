@@ -370,16 +370,6 @@ func MustRefresh() {
 
 	}()
 
-	if nc, ok := config["noCloud"]; ok {
-		if nc.(bool) {
-			config["userId"] = "nouser"
-			config["token"] = "notoken"
-			config["sphereNetworkKey"] = "nonetworkkey"
-			config["siteId"] = "nomesh" + Serial()
-			config["masterNodeId"] = Serial()
-		}
-	}
-
 }
 
 func addEnv(config map[string]interface{}) {
