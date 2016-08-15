@@ -82,8 +82,8 @@ func Serial() string {
 		if HasString("serial") {
 			serial = String("serial")
 		} else {
-
-			cmd := exec.Command("sphere-serial", os.Args[1:]...)
+			// dont use the user space wrapper to avoid fork bomb -> sphere-serial -> sphere-config -> sphere-serial -> sphere-config
+			cmd := exec.Command("sphere-go-serial", os.Args[1:]...)
 
 			var out bytes.Buffer
 			cmd.Stdout = &out
