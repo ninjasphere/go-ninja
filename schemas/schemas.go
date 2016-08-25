@@ -143,10 +143,12 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 			key = strings.Join(append([]string{refPath}, point.path...), "/properties/")
 		}
 
+		extendedKey := serviceSchemaUri + key
+
 		//log.Debugf("Created path %s", key)
 
 		var timeseriesType string
-		timeseriesType, ok := timeSeriesPaths[key]
+		timeseriesType, ok := timeSeriesPaths[extendedKey]
 
 		if !ok {
 
@@ -179,7 +181,7 @@ func GetEventTimeSeriesData(value interface{}, serviceSchemaUri, event string) (
 				timeseriesType, ok = pointSchema["timeseries"].(string)
 			}
 
-			timeSeriesPaths[key] = timeseriesType
+			timeSeriesPaths[extendedKey] = timeseriesType
 		}
 
 		if ok && timeseriesType != "" {
