@@ -86,7 +86,7 @@ func (c *cloud) RegisterUser(name string, email string, password string) error {
 			resp, err := getClient().Do(req)
 			if err == nil {
 				data := map[string]interface{}{}
-				err := decodeData(resp, data)
+				err := decodeData(resp, &data)
 				if err != nil {
 					return err
 				}
