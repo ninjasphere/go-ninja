@@ -93,7 +93,7 @@ func (s *ExportedService) SendEvent(event string, payload ...interface{}) error 
 			// If we have a payload, then we need our schema to define one.
 			_, err := schemas.GetSchema(schema)
 			if err != nil {
-				return fmt.Errorf("Event '%s' failed validation (schema: %s). A payload wasn't defined, but one was given.", event, schema)
+				return fmt.Errorf("Event '%s' failed validation (schema: %s). A payload wasn't defined, but one was given: %v", event, schema, err)
 			}
 
 			message, err := schemas.Validate(schema, payload[0])
