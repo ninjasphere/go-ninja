@@ -23,14 +23,14 @@ type Model103 struct {
 	TmpOt   float64 `json:"TmpOt"`
 	TmpSnk  float64 `json:"TmpSnk"`
 	TmpTrns float64 `json:"TmpTrns"`
-	St      float64 `json:"St"`
-	StVnd   float64 `json:"StVnd"`
-	Evt1    float64 `json:"Evt1"`
-	Evt2    float64 `json:"Evt2"`
-	EvtVnd1 float64 `json:"EvtVnd1"`
-	EvtVnd2 float64 `json:"EvtVnd2"`
-	EvtVnd3 float64 `json:"EvtVnd3"`
-	EvtVnd4 float64 `json:"EvtVnd4"`
+	St      uint16  `json:"St"`
+	StVnd   uint16  `json:"StVnd"`
+	Evt1    uint32  `json:"Evt1"`
+	Evt2    uint32  `json:"Evt2"`
+	EvtVnd1 uint32  `json:"EvtVnd1"`
+	EvtVnd2 uint32  `json:"EvtVnd2"`
+	EvtVnd3 uint32  `json:"EvtVnd3"`
+	EvtVnd4 uint32  `json:"EvtVnd4"`
 
 	// Model 102, 103
 
