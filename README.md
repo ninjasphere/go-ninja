@@ -5,7 +5,7 @@
 [![Ninja Sphere](https://img.shields.io/badge/built%20by-ninja%20blocks-lightgrey.svg)](http://ninjablocks.com)
 [![Ninja Sphere](https://img.shields.io/badge/works%20with-ninja%20sphere-8f72e3.svg)](http://ninjablocks.com)
 
-[![forthebadge](http://forthebadge.com/badges/built-by-hipsters.svg)](http://forthebadge.com)
+[![forthebadge](https://forthebadge.com/images/badges/built-by-hipsters.svg)](http://forthebadge.com)
 ---
 
 
@@ -32,7 +32,7 @@ For example usage in drivers, check out [driver-go-chromecast](https://github.co
 
 ### More Information
 
-More information can be found on the [project site](http://github.com/ninjasphere/go-ninja) or by visiting the Ninja Blocks [forums](https://discuss.ninjablocks.com).
+More information can be found on the [project site](https://github.com/ninjasphere/go-ninja) or by visiting the Ninja Blocks [forums](https://discuss.ninjablocks.com).
 
 ### Contributing Changes
 
