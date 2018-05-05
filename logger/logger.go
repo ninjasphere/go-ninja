@@ -64,7 +64,7 @@ func init() {
 	}
 	// setup the syslog writer
 	if useSyslog {
-		loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"), loggo.TRACE)
+		loggo.RegisterWriter("syslog", lsyslog.NewDefaultSyslogWriter(loggo.TRACE, path.Base(os.Args[0]), "LOCAL7"))
 	}
 
 }

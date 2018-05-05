@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/go-fsnotify/fsnotify"
+	"github.com/fsnotify/fsnotify"
 
 	"github.com/juju/loggo"
 	"gopkg.in/alecthomas/kingpin.v1"
